@@ -2,7 +2,25 @@
 
 FBI is an open source title manager for the 3DS.
 
-Download: https://github.com/Steveice10/FBI/releases
+This fork keeps the faster HTTP transfer changes from
+[colbyshores/FBI](https://github.com/colbyshores/FBI) and adds opt-in local
+discovery for [CIA Bridge](https://github.com/nicedayzhu/cia-bridge). Its first
+CIA Bridge-compatible build is version `2.7.1`, based on FBI-curl `2.7.0`.
+
+When **Remote Install → Receive URLs over the network** is open, CIA Bridge
+can discover the console automatically. Older FBI builds remain compatible:
+CIA Bridge falls back to neighbor scanning or manual IP entry when no discovery
+reply is available. The existing TCP port 5000 transfer protocol is unchanged.
+
+The CIA retains the upstream **FBI-curl** HOME title and unique ID `0xF8002`
+(`000400000F800200`), with product code `CTR-P-CFB2`. It can therefore be
+installed beside the official FBI (`0xF8001`) instead of replacing it. This
+fork intentionally updates/replaces an existing FBI-curl installation.
+
+The discovery wire format is documented in
+[docs/CIA_BRIDGE_DISCOVERY.md](docs/CIA_BRIDGE_DISCOVERY.md).
+
+Original project: https://github.com/Steveice10/FBI
 
 Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/), along with 3ds-curl, 3ds-zlib, and 3ds-jansson from the devkitPro pacman repository, to build.
 
@@ -13,6 +31,7 @@ Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/)
 * Export, import, and delete save data secure values.
 * Install titles/tickets from a file system, over a local network, or over the Internet with a URL or QR code.
   * Automatically imports title seeds on installation, either from the Internet or the SD card.
+  * Advertises the active network receiver to CIA Bridge on the local network.
 * Browse and delete pending titles (downloaded updates, in-progress eShop titles, etc).
 * Customize appearance by placing replacements for RomFS resources in "sdmc:/fbi/theme/".
 

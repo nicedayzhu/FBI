@@ -15,6 +15,11 @@
 #include "../core/core.h"
 #include "../libs/quirc/quirc_internal.h"
 
+#define CIA_BRIDGE_DISCOVERY_PORT 5001
+#define CIA_BRIDGE_DISCOVERY_REQUEST "CIA_BRIDGE_DISCOVER_V1"
+#define CIA_BRIDGE_DISCOVERY_RESPONSE "CIA_BRIDGE_FBI_V1;tcp=5000"
+#define CIA_BRIDGE_DISCOVERY_MAX_PACKETS 8
+
 static bool remoteinstall_get_last_urls(char* out, size_t size) {
     if(out == NULL || size == 0) {
         return false;
@@ -73,6 +78,7 @@ static Result remoteinstall_set_last_urls(const char* urls) {
 typedef struct {
     int serverSocket;
     int clientSocket;
+    int discoverySocket;
 } remoteinstall_network_data;
 
 static int remoteinstall_network_recvwait(int sockfd, void* buf, size_t len, int flags) {
@@ -115,12 +121,68 @@ static void remoteinstall_network_close_client(void* data) {
 static void remoteinstall_network_free_data(remoteinstall_network_data* data) {
     remoteinstall_network_close_client(data);
 
+    if(data->discoverySocket != 0) {
+        close(data->discoverySocket);
+        data->discoverySocket = 0;
+    }
+
     if(data->serverSocket != 0) {
         close(data->serverSocket);
         data->serverSocket = 0;
     }
 
     free(data);
+}
+
+static void remoteinstall_network_update_discovery(remoteinstall_network_data* data) {
+    if(data->discoverySocket == 0) {
+        return;
+    }
+
+    for(int i = 0; i < CIA_BRIDGE_DISCOVERY_MAX_PACKETS; i++) {
+        char request[sizeof(CIA_BRIDGE_DISCOVERY_REQUEST)];
+        struct sockaddr_in client;
+        socklen_t clientLen = sizeof(client);
+
+        int received = recvfrom(data->discoverySocket, request, sizeof(request), 0, (struct sockaddr*) &client, &clientLen);
+        if(received < 0) {
+            if(errno == EAGAIN) {
+                break;
+            }
+
+            return;
+        }
+
+        if(received == (int) strlen(CIA_BRIDGE_DISCOVERY_REQUEST)
+           && memcmp(request, CIA_BRIDGE_DISCOVERY_REQUEST, strlen(CIA_BRIDGE_DISCOVERY_REQUEST)) == 0) {
+            sendto(data->discoverySocket, CIA_BRIDGE_DISCOVERY_RESPONSE, strlen(CIA_BRIDGE_DISCOVERY_RESPONSE), 0,
+                   (struct sockaddr*) &client, clientLen);
+        }
+    }
+}
+
+static void remoteinstall_network_open_discovery(remoteinstall_network_data* data) {
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(sock < 0) {
+        return;
+    }
+
+    int reuseAddress = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuseAddress, sizeof(reuseAddress));
+
+    struct sockaddr_in server;
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_port = htons(CIA_BRIDGE_DISCOVERY_PORT);
+    server.sin_addr.s_addr = INADDR_ANY;
+
+    if(bind(sock, (struct sockaddr*) &server, sizeof(server)) < 0
+       || fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK) < 0) {
+        close(sock);
+        return;
+    }
+
+    data->discoverySocket = sock;
 }
 
 static void remoteinstall_network_update(ui_view* view, void* data, float* progress, char* text) {
@@ -134,6 +196,8 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
 
         return;
     }
+
+    remoteinstall_network_update_discovery(networkData);
 
     struct sockaddr_in client;
     socklen_t clientLen = sizeof(client);
@@ -194,7 +258,8 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
     }
 
     struct in_addr addr = {(in_addr_t) gethostid()};
-    snprintf(text, PROGRESS_TEXT_MAX, "Waiting for connection...\nIP: %s\nPort: 5000", inet_ntoa(addr));
+    snprintf(text, PROGRESS_TEXT_MAX, "Waiting for connection...\nIP: %s\nPort: 5000\nCIA Bridge discovery: %s", inet_ntoa(addr),
+             networkData->discoverySocket != 0 ? "ready" : "unavailable");
 }
 
 static void remoteinstall_receive_urls_network() {
@@ -235,6 +300,8 @@ static void remoteinstall_receive_urls_network() {
         remoteinstall_network_free_data(data);
         return;
     }
+
+    remoteinstall_network_open_discovery(data);
 
     info_display("Receive URL(s)", "B: Return", false, data, remoteinstall_network_update, NULL);
 }
