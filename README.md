@@ -22,6 +22,12 @@ Build artifacts are named `FBI-cia-bridge.cia` and
 files on an SD card. This filename change does not alter the HOME Menu title,
 title ID, or installed-title upgrade behavior described above.
 
+The installed build also uses a teal HOME Menu icon and a matching teal FBI
+logo on the rotating top-screen 3D banner. The model, animation, lighting, and
+gray side texture remain unchanged. Maintainers can regenerate both branded
+assets with `scripts/recolor-brand-assets.ps1` and
+[txobtool](https://github.com/dnasdw/txobtool).
+
 The discovery wire format is documented in
 [docs/CIA_BRIDGE_DISCOVERY.md](docs/CIA_BRIDGE_DISCOVERY.md).
 
