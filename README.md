@@ -16,6 +16,12 @@ Successful writes are also checked and retried when the service reports a
 partial write. Hardware A/B testing improved peak LAN throughput from about
 1.4 MB/s to 2.2 MB/s on the test system.
 
+Version `2.7.3` keeps the hardware-tested 128 KiB write size and expands the
+adaptive queue to 32/16/8/4/2 slots. The maximum queue is therefore 4 MiB,
+giving the writer more room to absorb short AM/SD latency spikes while retaining
+automatic low-memory fallback. Transfer diagnostics used during hardware testing
+are not included in the release build.
+
 When **Remote Install → Receive URLs over the network** is open, CIA Bridge
 can discover the console automatically. Older FBI builds remain compatible:
 CIA Bridge falls back to neighbor scanning or manual IP entry when no discovery

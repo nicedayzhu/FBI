@@ -18,9 +18,9 @@ BUILD_FLAGS := -Wno-format-truncation
 
 VERSION_MAJOR := 2
 VERSION_MINOR := 7
-VERSION_MICRO := 2
+VERSION_MICRO := 3
 
-DESCRIPTION := CIA Bridge discovery and pipelined installs.
+DESCRIPTION := CIA Bridge discovery and buffered pipelined installs.
 AUTHOR := Steveice10
 
 PRODUCT_CODE := CTR-P-CFB2

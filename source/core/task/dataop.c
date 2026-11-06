@@ -137,7 +137,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     return res;
 }
 
-#define DATA_OP_DOWNLOAD_QUEUE_MAX_SLOTS 16
+#define DATA_OP_DOWNLOAD_QUEUE_MAX_SLOTS 32
 #define DATA_OP_DOWNLOAD_QUEUE_MIN_SLOTS 2
 
 typedef struct {
