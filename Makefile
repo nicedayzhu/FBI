@@ -1,6 +1,6 @@
 TARGET := 3DS
 
-NAME := FBI
+NAME := FBI-cia-bridge
 TITLE := FBI-curl
 
 BUILD_DIR := build

@@ -17,6 +17,11 @@ The CIA retains the upstream **FBI-curl** HOME title and unique ID `0xF8002`
 installed beside the official FBI (`0xF8001`) instead of replacing it. This
 fork intentionally updates/replaces an existing FBI-curl installation.
 
+Build artifacts are named `FBI-cia-bridge.cia` and
+`FBI-cia-bridge.3dsx`, so they remain easy to distinguish from official FBI
+files on an SD card. This filename change does not alter the HOME Menu title,
+title ID, or installed-title upgrade behavior described above.
+
 The discovery wire format is documented in
 [docs/CIA_BRIDGE_DISCOVERY.md](docs/CIA_BRIDGE_DISCOVERY.md).
 
