@@ -4,4 +4,6 @@ CMakeLists.txt
 
 build
 output
+build-*/
+output-*/
 .codebase-memory/

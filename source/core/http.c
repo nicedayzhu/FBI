@@ -249,6 +249,9 @@ typedef struct {
     u64 delivered;
 
     Result res;
+
+    u64 lastControlCheck;
+    u64 lastProgressUpdate;
 } http_curl_data;
 
 static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
@@ -323,11 +326,19 @@ const char* http_curl_detail_message(void) {
 int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
     http_curl_data* curlData = (http_curl_data*) clientp;
 
-    if(R_FAILED(curlData->res) || (curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData)))) {
-        return 1;
+    u64 time = osGetTime();
+    bool finalUpdate = dltotal > 0 && dlnow >= dltotal;
+
+    if(curlData->lastControlCheck == 0 || time - curlData->lastControlCheck >= 25 || finalUpdate) {
+        curlData->lastControlCheck = time;
+        if(R_FAILED(curlData->res) || (curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData)))) {
+            return 1;
+        }
     }
 
-    if(curlData->progress != NULL) {
+    if(curlData->progress != NULL
+       && (curlData->lastProgressUpdate == 0 || time - curlData->lastProgressUpdate >= 100 || finalUpdate)) {
+        curlData->lastProgressUpdate = time;
         curlData->progress(curlData->userData, (u64) dltotal, (u64) dlnow);
     }
 
@@ -341,7 +352,14 @@ int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t d
 // Sockets are widened through the sockopt callback above.
 static Result http_curl_download(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
                                  Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr), void* buf, u64* delivered) {
-    http_curl_data curlData = {bufferSize, userData, callback, checkRunning, progress, buf, 0, 0, 0};
+    http_curl_data curlData;
+    memset(&curlData, 0, sizeof(curlData));
+    curlData.bufferSize = bufferSize;
+    curlData.userData = userData;
+    curlData.callback = callback;
+    curlData.checkRunning = checkRunning;
+    curlData.progress = progress;
+    curlData.buf = buf;
     Result res = 0;
 
     CURL* curl = curl_easy_init();

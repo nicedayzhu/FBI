@@ -7,6 +7,15 @@ This fork keeps the faster HTTP transfer changes from
 discovery for [CIA Bridge](https://github.com/nicedayzhu/cia-bridge). Its first
 CIA Bridge-compatible build is version `2.7.1`, based on FBI-curl `2.7.0`.
 
+Version `2.7.2` pipelines URL reception and CIA installation instead of pausing
+the network for every AM write. New 3DS download work prefers core 2 with a
+core 1 fallback, while a dedicated writer drains an adaptive 16/8/4/2-slot
+queue. The queue uses at most 2 MiB with the default 128 KiB blocks and absorbs
+occasional long-latency AM/SD writes without collapsing the TCP receive window.
+Successful writes are also checked and retried when the service reports a
+partial write. Hardware A/B testing improved peak LAN throughput from about
+1.4 MB/s to 2.2 MB/s on the test system.
+
 When **Remote Install → Receive URLs over the network** is open, CIA Bridge
 can discover the console automatically. Older FBI builds remain compatible:
 CIA Bridge falls back to neighbor scanning or manual IP entry when no discovery

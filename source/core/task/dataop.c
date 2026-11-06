@@ -137,6 +137,9 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     return res;
 }
 
+#define DATA_OP_DOWNLOAD_QUEUE_MAX_SLOTS 16
+#define DATA_OP_DOWNLOAD_QUEUE_MIN_SLOTS 2
+
 typedef struct {
     data_op_data* data;
 
@@ -149,7 +152,208 @@ typedef struct {
     u32 bytesSinceUpdate;
 
     u64 writeOffset;
+
+    u8* queueStorage;
+    size_t queueSizes[DATA_OP_DOWNLOAD_QUEUE_MAX_SLOTS];
+    u32 queueSlotCount;
+    u32 queueReadIndex;
+    u32 queueWriteIndex;
+    u32 queuedCount;
+    u32 inUseCount;
+
+    LightLock queueLock;
+    CondVar queueNotEmpty;
+    CondVar queueNotFull;
+
+    bool asyncEnabled;
+    bool producerDone;
+    bool abortWriter;
+    Result writerResult;
+    Thread writerThread;
 } data_op_download_data;
+
+static Result task_data_op_download_write_all(data_op_download_data* downloadData, void* buffer, size_t size) {
+    data_op_data* data = downloadData->data;
+
+    size_t position = 0;
+    while(position < size) {
+        u32 remaining = (u32) (size - position);
+        u32 bytesWritten = 0;
+        Result res = data->writeDst(data->data, downloadData->dstHandle, &bytesWritten,
+                                    (u8*) buffer + position, downloadData->writeOffset, remaining);
+        if(R_FAILED(res)) {
+            return res;
+        }
+
+        if(bytesWritten == 0 || bytesWritten > remaining) {
+            return R_APP_BAD_DATA;
+        }
+
+        position += bytesWritten;
+        downloadData->writeOffset += bytesWritten;
+    }
+
+    return 0;
+}
+
+static void task_data_op_download_writer_thread(void* arg) {
+    data_op_download_data* downloadData = (data_op_download_data*) arg;
+
+    while(true) {
+        LightLock_Lock(&downloadData->queueLock);
+        while(downloadData->queuedCount == 0 && !downloadData->producerDone && !downloadData->abortWriter) {
+            CondVar_Wait(&downloadData->queueNotEmpty, &downloadData->queueLock);
+        }
+
+        if(downloadData->abortWriter || (downloadData->producerDone && downloadData->queuedCount == 0)) {
+            LightLock_Unlock(&downloadData->queueLock);
+            break;
+        }
+
+        u32 slot = downloadData->queueReadIndex;
+        size_t size = downloadData->queueSizes[slot];
+        downloadData->queueReadIndex = (downloadData->queueReadIndex + 1) % downloadData->queueSlotCount;
+        downloadData->queuedCount--;
+        LightLock_Unlock(&downloadData->queueLock);
+
+        u8* slotBuffer = downloadData->queueStorage + (slot * downloadData->data->bufferSize);
+        Result res = task_data_op_download_write_all(downloadData, slotBuffer, size);
+
+        LightLock_Lock(&downloadData->queueLock);
+        downloadData->inUseCount--;
+        if(R_FAILED(res)) {
+            downloadData->writerResult = res;
+            downloadData->abortWriter = true;
+        }
+
+        CondVar_Broadcast(&downloadData->queueNotFull);
+        CondVar_Broadcast(&downloadData->queueNotEmpty);
+
+        bool finished = downloadData->abortWriter
+                        || (downloadData->producerDone && downloadData->queuedCount == 0 && downloadData->inUseCount == 0);
+        LightLock_Unlock(&downloadData->queueLock);
+
+        if(finished) {
+            break;
+        }
+    }
+}
+
+static void task_data_op_download_free_async(data_op_download_data* downloadData) {
+    free(downloadData->queueStorage);
+    downloadData->queueStorage = NULL;
+    downloadData->queueSlotCount = 0;
+    downloadData->asyncEnabled = false;
+}
+
+static bool task_data_op_download_init_async(data_op_download_data* downloadData) {
+    LightLock_Init(&downloadData->queueLock);
+    CondVar_Init(&downloadData->queueNotEmpty);
+    CondVar_Init(&downloadData->queueNotFull);
+
+    u32 slotCount = DATA_OP_DOWNLOAD_QUEUE_MAX_SLOTS;
+    while(slotCount >= DATA_OP_DOWNLOAD_QUEUE_MIN_SLOTS) {
+        size_t allocationSize = (size_t) downloadData->data->bufferSize * slotCount;
+        downloadData->queueStorage = (u8*) malloc(allocationSize);
+        if(downloadData->queueStorage != NULL) {
+            downloadData->queueSlotCount = slotCount;
+
+            // Keep the writer on the application core. The download worker runs on core 2 on
+            // New 3DS and core 1 on Old 3DS, so network receive can overlap the AM/FS IPC wait.
+            downloadData->writerThread = threadCreate(task_data_op_download_writer_thread, downloadData,
+                                                       0x10000, 0x20, 0, false);
+            if(downloadData->writerThread != NULL) {
+                downloadData->asyncEnabled = true;
+                return true;
+            }
+
+            free(downloadData->queueStorage);
+            downloadData->queueStorage = NULL;
+            downloadData->queueSlotCount = 0;
+        }
+
+        slotCount /= 2;
+    }
+
+    return false;
+}
+
+static Result task_data_op_download_enqueue(data_op_download_data* downloadData, void* buffer, size_t size) {
+    if(size > downloadData->data->bufferSize || downloadData->queueSlotCount < DATA_OP_DOWNLOAD_QUEUE_MIN_SLOTS) {
+        return R_APP_BAD_DATA;
+    }
+
+    while(true) {
+        LightLock_Lock(&downloadData->queueLock);
+
+        if(R_FAILED(downloadData->writerResult)) {
+            Result res = downloadData->writerResult;
+            LightLock_Unlock(&downloadData->queueLock);
+            return res;
+        }
+
+        if(downloadData->abortWriter) {
+            LightLock_Unlock(&downloadData->queueLock);
+            return R_APP_CANCELLED;
+        }
+
+        if(downloadData->inUseCount < downloadData->queueSlotCount) {
+            u32 slot = downloadData->queueWriteIndex;
+            u8* slotBuffer = downloadData->queueStorage + (slot * downloadData->data->bufferSize);
+            memcpy(slotBuffer, buffer, size);
+            downloadData->queueSizes[slot] = size;
+            downloadData->queueWriteIndex = (downloadData->queueWriteIndex + 1) % downloadData->queueSlotCount;
+            downloadData->queuedCount++;
+            downloadData->inUseCount++;
+
+            CondVar_Signal(&downloadData->queueNotEmpty);
+            LightLock_Unlock(&downloadData->queueLock);
+            return 0;
+        }
+
+        int waitRes = CondVar_WaitTimeout(&downloadData->queueNotFull, &downloadData->queueLock, 25 * 1000 * 1000LL);
+        LightLock_Unlock(&downloadData->queueLock);
+
+        if(waitRes != 0) {
+            Result res = task_data_op_check_running(downloadData->data);
+            if(R_FAILED(res)) {
+                LightLock_Lock(&downloadData->queueLock);
+                downloadData->abortWriter = true;
+                CondVar_Broadcast(&downloadData->queueNotEmpty);
+                CondVar_Broadcast(&downloadData->queueNotFull);
+                LightLock_Unlock(&downloadData->queueLock);
+                return res;
+            }
+        }
+    }
+}
+
+static Result task_data_op_download_finish_async(data_op_download_data* downloadData, Result transferResult) {
+    LightLock_Lock(&downloadData->queueLock);
+    downloadData->producerDone = true;
+    if(R_FAILED(transferResult)) {
+        downloadData->abortWriter = true;
+    }
+
+    CondVar_Broadcast(&downloadData->queueNotEmpty);
+    CondVar_Broadcast(&downloadData->queueNotFull);
+    LightLock_Unlock(&downloadData->queueLock);
+
+    Result joinResult = threadJoin(downloadData->writerThread, U64_MAX);
+    threadFree(downloadData->writerThread);
+    downloadData->writerThread = NULL;
+
+    if(R_SUCCEEDED(transferResult)) {
+        if(R_FAILED(downloadData->writerResult)) {
+            transferResult = downloadData->writerResult;
+        } else if(R_FAILED(joinResult)) {
+            transferResult = joinResult;
+        }
+    }
+
+    task_data_op_download_free_async(downloadData);
+    return transferResult;
+}
 
 static Result task_data_op_download_callback(void* userData, void* buffer, size_t size) {
     data_op_download_data* downloadData = (data_op_download_data*) userData;
@@ -164,15 +368,25 @@ static Result task_data_op_download_callback(void* userData, void* buffer, size_
         }
     }
 
-    u32 bytesWritten = 0;
-    Result res = data->writeDst(data->data, downloadData->dstHandle, &bytesWritten, buffer, downloadData->writeOffset, size);
-    downloadData->writeOffset += bytesWritten;
+    if(downloadData->asyncEnabled) {
+        return task_data_op_download_enqueue(downloadData, buffer, size);
+    }
 
-    return res;
+    return task_data_op_download_write_all(downloadData, buffer, size);
 }
 
 static Result task_data_op_download_check_running(void* userData) {
     data_op_download_data* downloadData = (data_op_download_data*) userData;
+
+    if(downloadData->asyncEnabled) {
+        LightLock_Lock(&downloadData->queueLock);
+        Result writerResult = downloadData->writerResult;
+        LightLock_Unlock(&downloadData->queueLock);
+
+        if(R_FAILED(writerResult)) {
+            return writerResult;
+        }
+    }
 
     return task_data_op_check_running(downloadData->data);
 }
@@ -219,8 +433,20 @@ static Result task_data_op_download(data_op_data* data, u32 index) {
 
     char url[DOWNLOAD_URL_MAX];
     if(R_SUCCEEDED(res = data->getSrcUrl(data->data, index, url, DOWNLOAD_URL_MAX))) {
-        data_op_download_data downloadData = {data, index, 0, true, 0, osGetTime(), 0, 0};
+        data_op_download_data downloadData;
+        memset(&downloadData, 0, sizeof(downloadData));
+        downloadData.data = data;
+        downloadData.index = index;
+        downloadData.firstRun = true;
+        downloadData.lastBytesPerSecondUpdate = osGetTime();
+
+        task_data_op_download_init_async(&downloadData);
+
         res = http_download_callback(url, data->bufferSize, &downloadData, task_data_op_download_callback, task_data_op_download_check_running, task_data_op_download_progress);
+
+        if(downloadData.asyncEnabled) {
+            res = task_data_op_download_finish_async(&downloadData, res);
+        }
 
         if(downloadData.dstHandle != 0) {
             Result closeDstRes = data->closeDst(data->data, index, res == 0, downloadData.dstHandle);
@@ -318,7 +544,20 @@ Result task_data_op(data_op_data* data) {
 
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
-        if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+        int core = 1;
+        if(data->op == DATAOP_DOWNLOAD) {
+            bool n3ds = false;
+            if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && n3ds) {
+                core = 2;
+            }
+        }
+
+        Thread worker = threadCreate(task_data_op_thread, data, 0x10000, 0x18, core, true);
+        if(worker == NULL && core == 2) {
+            worker = threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true);
+        }
+
+        if(worker == NULL) {
             res = R_APP_THREAD_CREATE_FAILED;
         }
     }
