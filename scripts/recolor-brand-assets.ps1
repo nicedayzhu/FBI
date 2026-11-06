@@ -165,6 +165,105 @@ function Recolor-BannerTexture(
     }
 }
 
+function Get-RelativePointerTarget(
+    [byte[]]$Bytes,
+    [int]$PointerOffset
+) {
+    $relativeOffset = [BitConverter]::ToInt32($Bytes, $PointerOffset)
+    if ($relativeOffset -eq 0) {
+        return -1
+    }
+    return $PointerOffset + $relativeOffset
+}
+
+function Get-NullTerminatedAscii(
+    [byte[]]$Bytes,
+    [int]$Offset
+) {
+    if ($Offset -lt 0 -or $Offset -ge $Bytes.Length) {
+        throw "Invalid CGFX string offset: $Offset"
+    }
+    $end = $Offset
+    while ($end -lt $Bytes.Length -and $Bytes[$end] -ne 0) {
+        $end++
+    }
+    return [Text.Encoding]::ASCII.GetString($Bytes, $Offset, $end - $Offset)
+}
+
+function Set-Float32(
+    [byte[]]$Bytes,
+    [int]$Offset,
+    [single]$Value
+) {
+    $encoded = [BitConverter]::GetBytes($Value)
+    [Array]::Copy($encoded, 0, $Bytes, $Offset, $encoded.Length)
+}
+
+function Recolor-BannerMaterial(
+    [string]$Path,
+    [Drawing.Color]$Color
+) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $materialOffsets = @()
+
+    # MTOB stores its name as a relative pointer 12 bytes after the object start.
+    # Locate BOX_EDGE by structure and name instead of relying on a fixed file offset.
+    for ($magicOffset = 4; $magicOffset -le $bytes.Length - 12; $magicOffset++) {
+        if (
+            $bytes[$magicOffset] -eq 0x4D -and
+            $bytes[$magicOffset + 1] -eq 0x54 -and
+            $bytes[$magicOffset + 2] -eq 0x4F -and
+            $bytes[$magicOffset + 3] -eq 0x42
+        ) {
+            $materialOffset = $magicOffset - 4
+            $namePointerOffset = $materialOffset + 12
+            $nameOffset = Get-RelativePointerTarget $bytes $namePointerOffset
+            if ($nameOffset -ge 0 -and (Get-NullTerminatedAscii $bytes $nameOffset) -eq 'BOX_EDGE') {
+                $materialOffsets += $materialOffset
+            }
+        }
+    }
+
+    if ($materialOffsets.Count -ne 1) {
+        throw "Expected exactly one BOX_EDGE material, found $($materialOffsets.Count)."
+    }
+
+    $materialColorOffset = $materialOffsets[0] + 36
+    if ($materialColorOffset + 224 -gt $bytes.Length) {
+        throw 'BOX_EDGE material color data extends beyond the CGFX file.'
+    }
+    $specularFloatOffset = $materialColorOffset + 3 * 16
+    $constantFloatOffset = $materialColorOffset + 5 * 16
+    $specularByteOffset = $materialColorOffset + 176 + 3 * 4
+    $constantByteOffset = $materialColorOffset + 176 + 5 * 4
+
+    $channels = @($Color.R, $Color.G, $Color.B)
+    for ($channel = 0; $channel -lt 3; $channel++) {
+        Set-Float32 $bytes ($constantFloatOffset + $channel * 4) ([single]($channels[$channel] / 255.0))
+        $bytes[$constantByteOffset + $channel] = [byte]$channels[$channel]
+
+        # Retain the original material's subdued specular-to-base ratio.
+        $specular = [int][Math]::Round($channels[$channel] * 0.48)
+        Set-Float32 $bytes ($specularFloatOffset + $channel * 4) ([single]($specular / 255.0))
+        $bytes[$specularByteOffset + $channel] = [byte]$specular
+    }
+    Set-Float32 $bytes ($constantFloatOffset + 12) ([single]1.0)
+    $bytes[$constantByteOffset + 3] = 255
+    Set-Float32 $bytes ($specularFloatOffset + 12) ([single]0.0)
+    $bytes[$specularByteOffset + 3] = 0
+
+    $temporary = "$Path.new.cgfx"
+    try {
+        [IO.File]::WriteAllBytes($temporary, $bytes)
+        Move-Item -LiteralPath $temporary -Destination $Path -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporary) {
+            Remove-Item -LiteralPath $temporary -Force
+        }
+    }
+}
+
 $target = Convert-HexColor $TargetColor
 if (Test-Path -LiteralPath $workRoot) {
     Remove-Item -LiteralPath $workRoot -Recurse -Force
@@ -187,6 +286,10 @@ try {
 
     & $TxobTool --import --file $bannerPath --dir $textureRoot
     if ($LASTEXITCODE -ne 0) { throw 'Failed to inject recolored banner textures.' }
+
+    # The blue BOX_EDGE material is also applied to the raised FBI logo and
+    # border at runtime; changing only COMMON2 leaves the HOME banner blue.
+    Recolor-BannerMaterial $bannerPath $target
 }
 catch {
     Copy-Item -LiteralPath $backupIcon -Destination $iconPath -Force
@@ -195,4 +298,4 @@ catch {
 }
 
 Write-Host "Recolored HOME Menu icon: $iconPath"
-Write-Host "Recolored 3D banner texture: $bannerPath"
+Write-Host "Recolored 3D banner texture and material: $bannerPath"

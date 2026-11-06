@@ -26,7 +26,9 @@ The installed build also uses a teal HOME Menu icon and a matching teal FBI
 logo on the rotating top-screen 3D banner. The model, animation, lighting, and
 gray side texture remain unchanged. Maintainers can regenerate both branded
 assets with `scripts/recolor-brand-assets.ps1` and
-[txobtool](https://github.com/dnasdw/txobtool).
+[txobtool](https://github.com/dnasdw/txobtool). The script updates both the
+front texture and the `BOX_EDGE` material color used by the raised logo and
+border on real hardware.
 
 The discovery wire format is documented in
 [docs/CIA_BRIDGE_DISCOVERY.md](docs/CIA_BRIDGE_DISCOVERY.md).
