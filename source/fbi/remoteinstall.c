@@ -17,7 +17,8 @@
 
 #define CIA_BRIDGE_DISCOVERY_PORT 5001
 #define CIA_BRIDGE_DISCOVERY_REQUEST "CIA_BRIDGE_DISCOVER_V1"
-#define CIA_BRIDGE_DISCOVERY_RESPONSE "CIA_BRIDGE_FBI_V1;tcp=5000"
+#define CIA_BRIDGE_DISCOVERY_RESPONSE_V1 "CIA_BRIDGE_FBI_V1;tcp=5000"
+#define CIA_BRIDGE_DISCOVERY_RESPONSE_V2 "CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw"
 #define CIA_BRIDGE_DISCOVERY_MAX_PACKETS 8
 
 static bool remoteinstall_get_last_urls(char* out, size_t size) {
@@ -79,6 +80,7 @@ typedef struct {
     int serverSocket;
     int clientSocket;
     int discoverySocket;
+    void* patchListener;
 } remoteinstall_network_data;
 
 static int remoteinstall_network_recvwait(int sockfd, void* buf, size_t len, int flags) {
@@ -131,6 +133,11 @@ static void remoteinstall_network_free_data(remoteinstall_network_data* data) {
         data->serverSocket = 0;
     }
 
+    if(data->patchListener != NULL) {
+        patchinstall_listener_close(data->patchListener);
+        data->patchListener = NULL;
+    }
+
     free(data);
 }
 
@@ -155,7 +162,10 @@ static void remoteinstall_network_update_discovery(remoteinstall_network_data* d
 
         if(received == (int) strlen(CIA_BRIDGE_DISCOVERY_REQUEST)
            && memcmp(request, CIA_BRIDGE_DISCOVERY_REQUEST, strlen(CIA_BRIDGE_DISCOVERY_REQUEST)) == 0) {
-            sendto(data->discoverySocket, CIA_BRIDGE_DISCOVERY_RESPONSE, strlen(CIA_BRIDGE_DISCOVERY_RESPONSE), 0,
+            const char* response = data->patchListener != NULL
+                                   ? CIA_BRIDGE_DISCOVERY_RESPONSE_V2
+                                   : CIA_BRIDGE_DISCOVERY_RESPONSE_V1;
+            sendto(data->discoverySocket, response, strlen(response), 0,
                    (struct sockaddr*) &client, clientLen);
         }
     }
@@ -198,6 +208,16 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
     }
 
     remoteinstall_network_update_discovery(networkData);
+
+    if(networkData->patchListener != NULL && patchinstall_listener_poll(networkData->patchListener)) {
+        void* patchListener = networkData->patchListener;
+        networkData->patchListener = NULL;
+        ui_pop();
+        info_destroy(view);
+        remoteinstall_network_free_data(networkData);
+        patchinstall_listener_prompt(patchListener);
+        return;
+    }
 
     struct sockaddr_in client;
     socklen_t clientLen = sizeof(client);
@@ -301,6 +321,7 @@ static void remoteinstall_receive_urls_network() {
         return;
     }
 
+    data->patchListener = patchinstall_listener_open();
     remoteinstall_network_open_discovery(data);
 
     info_display("Receive URL(s)", "B: Return", false, data, remoteinstall_network_update, NULL);

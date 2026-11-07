@@ -2,7 +2,8 @@
 
 This FBI fork exposes a small, stateless LAN discovery endpoint while the
 **Receive URLs over the network** screen is active. It does not change FBI's
-existing URL transfer protocol.
+existing URL transfer protocol and also advertises the patch listener when it
+was started successfully.
 
 ## Version 1
 
@@ -32,3 +33,17 @@ existing Nintendo-MAC/candidate scan, followed by manual IP entry.
 
 Future incompatible discovery formats must use a new request and response
 version token instead of changing `V1` in place.
+
+## Version 2 patch capability
+
+The existing **Receive URLs over the network** screen listens for the same
+discovery request on UDP 5001 and replies:
+
+`CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw`
+
+`cia` preserves the original Remote Install control port, `patch` advertises
+the independent CBPATCH1 control port, and `codecs=raw` declares that the
+streaming receiver accepts only uncompressed record payloads. The screen
+selects the protocol by the TCP port that CIA Bridge connects to; users do not
+choose a second FBI menu item. If TCP 5002 cannot be opened, discovery falls
+back to the Version 1 response and TCP 5000 remains available.

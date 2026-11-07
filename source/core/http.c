@@ -61,7 +61,7 @@ static void httpc_resolve_redirect(char* oldUrl, const char* redirectTo, size_t 
     }
 }
 
-static Result httpc_open(httpc_context* context, const char* url, bool userAgent) {
+static Result httpc_open(httpc_context* context, const char* url, bool userAgent, const char* range) {
     if(url == NULL) {
         return R_APP_INVALID_ARGUMENT;
     }
@@ -72,6 +72,14 @@ static Result httpc_open(httpc_context* context, const char* url, bool userAgent
     if(ctx != NULL) {
         char currUrl[1024];
         string_copy(currUrl, url, sizeof(currUrl));
+        char rangeHeader[80] = {'\0'};
+        if(range != NULL) {
+            int length = snprintf(rangeHeader, sizeof(rangeHeader), "bytes=%s", range);
+            if(length < 0 || length >= (int) sizeof(rangeHeader)) {
+                free(ctx);
+                return R_APP_OUT_OF_RANGE;
+            }
+        }
 
         bool resolved = false;
         u32 redirectCount = 0;
@@ -80,7 +88,8 @@ static Result httpc_open(httpc_context* context, const char* url, bool userAgent
                 u32 response = 0;
                 if(R_SUCCEEDED(res = httpcSetSSLOpt(&ctx->httpc, SSLCOPT_DisableVerify))
                    && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "User-Agent", HTTP_USER_AGENT)))
-                   && R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "Accept-Encoding", "gzip, deflate"))
+                   && (range == NULL || R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "Range", rangeHeader)))
+                   && R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "Accept-Encoding", range == NULL ? "gzip, deflate" : "identity"))
                    && R_SUCCEEDED(res = httpcSetKeepAlive(&ctx->httpc, HTTPC_KEEPALIVE_ENABLED))
                    && R_SUCCEEDED(res = httpcBeginRequest(&ctx->httpc))
                    && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(&ctx->httpc, &response, HTTP_TIMEOUT_NS))) {
@@ -97,7 +106,7 @@ static Result httpc_open(httpc_context* context, const char* url, bool userAgent
                     } else {
                         resolved = true;
 
-                        if(response == 200) {
+                        if((range == NULL && response == 200) || (range != NULL && response == 206)) {
                             char encoding[32];
                             if(R_SUCCEEDED(httpcGetResponseHeader(&ctx->httpc, "Content-Encoding", encoding, sizeof(encoding)))) {
                                 bool gzip = strncmp(encoding, "gzip", sizeof(encoding)) == 0;
@@ -242,6 +251,9 @@ typedef struct {
 
     void* buf;
     u32 pos;
+    CURL* curl;
+    bool requirePartial;
+    bool responseChecked;
 
     // Total bytes handed to the callback so far: a transport failure after data has been
     // delivered must not trigger a restart, because the destination (a CIA install handle
@@ -257,6 +269,16 @@ typedef struct {
 static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     http_curl_data* curlData = (http_curl_data*) userdata;
 
+    if(curlData->requirePartial && !curlData->responseChecked) {
+        long responseCode = 0;
+        curlData->responseChecked = true;
+        if(curl_easy_getinfo(curlData->curl, CURLINFO_RESPONSE_CODE, &responseCode) != CURLE_OK
+           || responseCode != 206) {
+            curlData->res = R_APP_HTTP_ERROR_BASE + responseCode;
+            return 0;
+        }
+    }
+
     size_t srcPos = 0;
     size_t available = size * nmemb;
     while(R_SUCCEEDED(curlData->res) && available > 0) {
@@ -271,11 +293,8 @@ static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, voi
 
         if(curlData->pos == curlData->bufferSize) {
             curlData->res = curlData->callback(curlData->userData, curlData->buf, curlData->bufferSize);
+            curlData->delivered += curlData->bufferSize;
             curlData->pos = 0;
-
-            if(R_SUCCEEDED(curlData->res)) {
-                curlData->delivered += curlData->bufferSize;
-            }
         }
     }
 
@@ -350,7 +369,7 @@ int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t d
 // hop with its own fixed internal buffering, and its TLS path through the SSLC service caps
 // practical throughput at roughly 100-250 KB/s (the eShop's own downloads behave the same).
 // Sockets are widened through the sockopt callback above.
-static Result http_curl_download(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
+static Result http_curl_download(const char* url, const char* range, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
                                  Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr), void* buf, u64* delivered) {
     http_curl_data curlData;
     memset(&curlData, 0, sizeof(curlData));
@@ -364,12 +383,17 @@ static Result http_curl_download(const char* url, u32 bufferSize, void* userData
 
     CURL* curl = curl_easy_init();
     if(curl != NULL) {
+        curlData.curl = curl;
+        curlData.requirePartial = range != NULL;
         http_curl_detail[0] = '\0';
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, http_curl_detail);
         curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, bufferSize);
-        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, range == NULL ? "" : "identity");
+        if(range != NULL) {
+            curl_easy_setopt(curl, CURLOPT_RANGE, range);
+        }
         curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, (long) HTTP_TIMEOUT_SEC);
         curl_easy_setopt(curl, CURLOPT_MAXREDIRS, (long) HTTP_MAX_REDIRECTS);
@@ -389,11 +413,8 @@ static Result http_curl_download(const char* url, u32 bufferSize, void* userData
         if(ret == CURLE_OK && curlData.pos != 0) {
             size_t tail = curlData.pos;
             curlData.res = curlData.callback(curlData.userData, curlData.buf, tail);
+            curlData.delivered += tail;
             curlData.pos = 0;
-
-            if(R_SUCCEEDED(curlData.res)) {
-                curlData.delivered += tail;
-            }
         }
 
         res = curlData.res;
@@ -420,12 +441,12 @@ static Result http_curl_download(const char* url, u32 bufferSize, void* userData
 
 // Fallback transport: the HTTPC system service. Only used when curl fails before any data has
 // been delivered, so a partially written destination is never restarted in place.
-static Result httpc_download(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
+static Result httpc_download(const char* url, const char* range, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
                              Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr), void* buf) {
     Result res = 0;
 
     httpc_context context = NULL;
-    if(R_SUCCEEDED(res = httpc_open(&context, url, true))) {
+    if(R_SUCCEEDED(res = httpc_open(&context, url, true, range))) {
         u32 dlSize = 0;
         if(R_SUCCEEDED(res = httpc_get_size(context, &dlSize))) {
             if(progress != NULL) {
@@ -452,22 +473,25 @@ static Result httpc_download(const char* url, u32 bufferSize, void* userData, Re
                 total += currSize;
             }
 
-            Result closeRes = httpc_close(context);
-            if(R_SUCCEEDED(res)) {
-                res = closeRes;
-            }
+        }
+
+        Result closeRes = httpc_close(context);
+        if(R_SUCCEEDED(res)) {
+            res = closeRes;
         }
     }
 
     return res;
 }
 
-Result http_download_transport_curl(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
-                                    Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr), u64* delivered) {
+static Result http_download_transport_curl_range(const char* url, const char* range, u32 bufferSize, void* userData,
+                                                 Result (*callback)(void* userData, void* buffer, size_t size),
+                                                 Result (*checkRunning)(void* userData),
+                                                 Result (*progress)(void* userData, u64 total, u64 curr), u64* delivered) {
     Result res = R_APP_OUT_OF_MEMORY;
     void* buf = malloc(bufferSize);
     if(buf != NULL) {
-        res = http_curl_download(url, bufferSize, userData, callback, checkRunning, progress, buf, delivered);
+        res = http_curl_download(url, range, bufferSize, userData, callback, checkRunning, progress, buf, delivered);
         free(buf);
     } else {
         *delivered = 0;
@@ -476,13 +500,52 @@ Result http_download_transport_curl(const char* url, u32 bufferSize, void* userD
     return res;
 }
 
-Result http_download_transport_httpc(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
-                                     Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr)) {
+Result http_download_transport_curl(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
+                                    Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr), u64* delivered) {
+    return http_download_transport_curl_range(url, NULL, bufferSize, userData, callback,
+                                              checkRunning, progress, delivered);
+}
+
+static Result http_download_transport_httpc_range(const char* url, const char* range, u32 bufferSize, void* userData,
+                                                  Result (*callback)(void* userData, void* buffer, size_t size),
+                                                  Result (*checkRunning)(void* userData),
+                                                  Result (*progress)(void* userData, u64 total, u64 curr)) {
     Result res = R_APP_OUT_OF_MEMORY;
     void* buf = malloc(bufferSize);
     if(buf != NULL) {
-        res = httpc_download(url, bufferSize, userData, callback, checkRunning, progress, buf);
+        res = httpc_download(url, range, bufferSize, userData, callback, checkRunning, progress, buf);
         free(buf);
+    }
+
+    return res;
+}
+
+Result http_download_transport_httpc(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
+                                     Result (*checkRunning)(void* userData), Result (*progress)(void* userData, u64 total, u64 curr)) {
+    return http_download_transport_httpc_range(url, NULL, bufferSize, userData, callback,
+                                               checkRunning, progress);
+}
+
+static Result http_download_callback_internal(const char* url, const char* range, u32 bufferSize, void* userData,
+                                              Result (*callback)(void* userData, void* buffer, size_t size),
+                                              Result (*checkRunning)(void* userData),
+                                              Result (*progress)(void* userData, u64 total, u64 curr)) {
+    u64 delivered = 0;
+    Result res = http_download_transport_curl_range(url, range, bufferSize, userData, callback,
+                                                    checkRunning, progress, &delivered);
+
+    if(R_FAILED(res) && res != R_APP_SKIPPED && res != R_APP_CANCELLED
+       && delivered == 0) {
+        // The HTTPC fallback may also fail (often for the same underlying reason); the
+        // curl error is reported in that case because it carries the more specific
+        // transport detail for the primary transport.
+        Result curlRes = res;
+        res = http_download_transport_httpc_range(url, range, bufferSize, userData, callback,
+                                                  checkRunning, progress);
+
+        if(R_FAILED(res)) {
+            res = curlRes;
+        }
     }
 
     return res;
@@ -491,22 +554,19 @@ Result http_download_transport_httpc(const char* url, u32 bufferSize, void* user
 Result http_download_callback(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
                                                                                Result (*checkRunning)(void* userData),
                                                                                Result (*progress)(void* userData, u64 total, u64 curr)) {
-    u64 delivered = 0;
-    Result res = http_download_transport_curl(url, bufferSize, userData, callback, checkRunning, progress, &delivered);
+    return http_download_callback_internal(url, NULL, bufferSize, userData, callback,
+                                           checkRunning, progress);
+}
 
-    if(R_FAILED(res) && delivered == 0) {
-        // The HTTPC fallback may also fail (often for the same underlying reason); the
-        // curl error is reported in that case because it carries the more specific
-        // transport detail for the primary transport.
-        Result curlRes = res;
-        res = http_download_transport_httpc(url, bufferSize, userData, callback, checkRunning, progress);
-
-        if(R_FAILED(res)) {
-            res = curlRes;
-        }
+Result http_download_callback_range(const char* url, const char* range, u32 bufferSize, void* userData,
+                                    Result (*callback)(void* userData, void* buffer, size_t size),
+                                    Result (*checkRunning)(void* userData),
+                                    Result (*progress)(void* userData, u64 total, u64 curr)) {
+    if(range == NULL || range[0] == '\0') {
+        return R_APP_INVALID_ARGUMENT;
     }
-
-    return res;
+    return http_download_callback_internal(url, range, bufferSize, userData, callback,
+                                           checkRunning, progress);
 }
 
 typedef struct {

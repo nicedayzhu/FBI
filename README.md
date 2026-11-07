@@ -4,23 +4,38 @@ FBI is an open source title manager for the 3DS.
 
 This fork keeps the faster HTTP transfer changes from
 [colbyshores/FBI](https://github.com/colbyshores/FBI) and adds opt-in local
-discovery for [CIA Bridge](https://github.com/nicedayzhu/cia-bridge). Its first
-CIA Bridge-compatible build is version `2.7.1`, based on FBI-curl `2.7.0`.
+discovery for [CIA Bridge](https://github.com/nicedayzhu/cia-bridge).
 
-Version `2.7.2` pipelines URL reception and CIA installation instead of pausing
-the network for every AM write. New 3DS download work prefers core 2 with a
-core 1 fallback, while a dedicated writer drains an adaptive 16/8/4/2-slot
-queue. The queue uses at most 2 MiB with the default 128 KiB blocks and absorbs
-occasional long-latency AM/SD writes without collapsing the TCP receive window.
-Successful writes are also checked and retried when the service reports a
-partial write. Hardware A/B testing improved peak LAN throughput from about
-1.4 MB/s to 2.2 MB/s on the test system.
+URL reception and CIA installation are pipelined through a dedicated writer
+and an adaptive 32/16/8/4/2-slot queue of 128 KiB blocks. New 3DS download work
+prefers core 2 with a core 1 fallback. The queue uses at most 4 MiB, retries
+partial service writes, and improved peak LAN throughput from about 1.4 MB/s
+to 2.2 MB/s on the test system.
 
-Version `2.7.3` keeps the hardware-tested 128 KiB write size and expands the
-adaptive queue to 32/16/8/4/2 slots. The maximum queue is therefore 4 MiB,
-giving the writer more room to absorb short AM/SD latency spikes while retaining
-automatic low-memory fallback. Transfer diagnostics used during hardware testing
-are not included in the release build.
+LayeredFS patch reception is exposed through the existing **Remote Install →
+Receive URLs over the network** screen as normal installs, with automatic protocol
+selection between TCP 5000 and TCP 5002. It consumes the sequential, raw-only
+`CBPATCH1` format. FBI first requests only the fixed 72-byte header. A
+deterministic content-set ID and a power-loss-safe completion marker allow an
+already completed bundle to finish without transferring its payload or opening
+any target file. Hold X while choosing Yes to force a complete per-file check.
+
+On a cache miss, a bounded 4/2-slot queue of 512 KiB blocks feeds direct SD
+writes. Each destination is compared by size and CRC32; identical files skip
+all writes. Changed files grow sequentially under
+`sdmc:/luma/titles/<Title ID>/romfs`, and an old longer tail is truncated only
+after the payload passes CRC32. Exact write counts, accumulated length, and
+CRC32 avoid a redundant final size query. Files absent from the incoming patch
+are preserved.
+
+The direct path avoids staging trees, rollback renames, per-record forced
+flushes, and whole-file preallocation. Its completion marker is invalidated and
+flushed before updates, then committed only after every record verifies, so an
+interrupted transfer cannot produce a false cache hit.
+
+Progress and completion screens report network, processing, and SD throughput;
+file counts; comparison, setup, write, and close time; write-call count; and
+cache status. The layouts are line-broken to fit the bottom screen.
 
 When **Remote Install → Receive URLs over the network** is open, CIA Bridge
 can discover the console automatically. Older FBI builds remain compatible:
@@ -37,16 +52,16 @@ Build artifacts are named `FBI-cia-bridge.cia` and
 files on an SD card. This filename change does not alter the HOME Menu title,
 title ID, or installed-title upgrade behavior described above.
 
-The installed build also uses a teal HOME Menu icon and a matching teal FBI
-logo on the rotating top-screen 3D banner. The model, animation, lighting, and
-gray side texture remain unchanged. Maintainers can regenerate both branded
-assets with `scripts/recolor-brand-assets.ps1` and
-[txobtool](https://github.com/dnasdw/txobtool). The script updates both the
-front texture and the `BOX_EDGE` material color used by the raised logo and
-border on real hardware.
+The installed build uses a teal HOME Menu icon, banner logo, and runtime theme
+while retaining FBI's layout and navigation. Maintainers can regenerate the
+HOME Menu assets with `scripts/recolor-brand-assets.ps1`, recolor the runtime
+textures with `scripts/recolor-runtime-theme.ps1`, and use
+[txobtool](https://github.com/dnasdw/txobtool).
 
 The discovery wire format is documented in
 [docs/CIA_BRIDGE_DISCOVERY.md](docs/CIA_BRIDGE_DISCOVERY.md).
+Release history is maintained in [CHANGELOG.md](CHANGELOG.md), not in this
+README.
 
 Original project: https://github.com/Steveice10/FBI
 
