@@ -1,3 +1,4 @@
+#include "../i18n.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -150,16 +151,32 @@ static void ui_draw_top(ui_view* ui) {
     screen_set_base_alpha(ui_fade_alpha);
 
     char verText[64];
-    snprintf(verText, 64, "Ver. %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    snprintf(verText, 64, i18n_get(I18N_VER_D_D_D), VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
     float verWidth;
     float verHeight;
     screen_get_string_size(&verWidth, &verHeight, verText, 0.5f, 0.5f);
     screen_draw_string(verText, topScreenTopBarX + 2, topScreenTopBarY + (topScreenTopBarHeight - verHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
 
+    static const i18n_message weekdays[] = {
+        I18N_WEEKDAY_SUNDAY,
+        I18N_WEEKDAY_MONDAY,
+        I18N_WEEKDAY_TUESDAY,
+        I18N_WEEKDAY_WEDNESDAY,
+        I18N_WEEKDAY_THURSDAY,
+        I18N_WEEKDAY_FRIDAY,
+        I18N_WEEKDAY_SATURDAY,
+    };
     time_t t = time(NULL);
-    char* timeText = ctime(&t);
-    timeText[strlen(timeText) - 1] = '\0';
+    struct tm* timeInfo = localtime(&t);
+    char timeText[32];
+    if(timeInfo != NULL && timeInfo->tm_wday >= 0 && timeInfo->tm_wday < 7) {
+        snprintf(timeText, sizeof(timeText), "%04d/%02d/%02d %02d:%02d:%02d %s",
+                 timeInfo->tm_year + 1900, timeInfo->tm_mon + 1, timeInfo->tm_mday,
+                 timeInfo->tm_hour, timeInfo->tm_min, timeInfo->tm_sec, i18n_get(weekdays[timeInfo->tm_wday]));
+    } else {
+        snprintf(timeText, sizeof(timeText), "----/--/-- --:--:--");
+    }
 
     float timeTextWidth;
     float timeTextHeight;
@@ -212,7 +229,7 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "SD: %.1f %s",
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), i18n_get(I18N_SD_1F_S),
                      ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
@@ -224,7 +241,7 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "CTR NAND: %.1f %s",
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), i18n_get(I18N_CTR_NAND_1F_S),
                      ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
@@ -236,7 +253,7 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL NAND: %.1f %s",
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), i18n_get(I18N_TWL_NAND_1F_S),
                      ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
@@ -248,7 +265,7 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL Photo: %.1f %s",
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), i18n_get(I18N_TWL_PHOTO_1F_S),
                      ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }

@@ -1,3 +1,4 @@
+#include "../core/i18n.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -258,7 +259,7 @@ static Result patch_invalidate_cache(patchinstall_data* data) {
     }
     data->cacheMs += osGetTime() - start;
     if(R_FAILED(res)) {
-        patch_set_error(data, "Failed to invalidate the patch cache marker.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_INVALIDATE_THE_PATCH_CACHE_MARKER));
     }
     return res;
 }
@@ -403,7 +404,7 @@ static Result patch_write_file(patchinstall_data* data, const u8* buffer, size_t
         data->fileWriteMs += osGetTime() - start;
         data->writeCalls++;
         if(R_FAILED(res) || written != size) {
-            patch_set_error(data, "Failed to write a target patch file.");
+            patch_set_error(data, i18n_get(I18N_FAILED_TO_WRITE_A_TARGET_PATCH_FILE));
             return R_FAILED(res) ? res : R_APP_BAD_DATA;
         }
     }
@@ -427,7 +428,7 @@ static Result patch_close_current_file(patchinstall_data* data, bool verify) {
         data->fileCloseMs += osGetTime() - start;
         data->file = 0;
         if(R_FAILED(closeRes)) {
-            patch_set_error(data, "Failed to close a target patch file.");
+            patch_set_error(data, i18n_get(I18N_FAILED_TO_CLOSE_A_TARGET_PATCH_FILE));
             res = closeRes;
         }
     }
@@ -435,7 +436,7 @@ static Result patch_close_current_file(patchinstall_data* data, bool verify) {
         if(data->fileStoredRead != data->fileStoredSize
            || data->fileRawWritten != data->fileRawSize
            || data->fileCrc != data->fileCrcExpected) {
-            patch_set_error(data, "A target patch file failed verification.");
+            patch_set_error(data, i18n_get(I18N_A_TARGET_PATCH_FILE_FAILED_VERIFICATION));
             res = R_APP_BAD_DATA;
         }
     }
@@ -459,7 +460,7 @@ static Result patch_prepare_target(patchinstall_data* data) {
         res = patch_ensure_directory(data->archive, directories[i]);
     }
     if(R_FAILED(res)) {
-        patch_set_error(data, "Failed to prepare the target patch directory.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_PREPARE_THE_TARGET_PATCH_DIRECTORY));
     }
     return res;
 }
@@ -472,7 +473,7 @@ static Result patch_parse_header(patchinstall_data* data) {
        || patch_read_u32(header + 28) != 0
        || patch_read_u32(header + 68) != 0
        || patch_read_u32(header + 64) != crc32(0, header, 64)) {
-        patch_set_error(data, "Invalid CBPATCH1 header.");
+        patch_set_error(data, i18n_get(I18N_INVALID_CBPATCH1_HEADER));
         return R_APP_BAD_DATA;
     }
 
@@ -491,7 +492,7 @@ static Result patch_parse_header(patchinstall_data* data) {
     }
     if(data->titleId == 0 || data->fileCount == 0 || data->fileCount > 100000
        || data->totalStored != data->totalRaw) {
-        patch_set_error(data, "Invalid title ID or file count.");
+        patch_set_error(data, i18n_get(I18N_INVALID_TITLE_ID_OR_FILE_COUNT));
         return R_APP_BAD_DATA;
     }
 
@@ -547,7 +548,7 @@ static Result patch_parse_record(patchinstall_data* data) {
     if(data->pathLength == 0 || data->pathLength > PATCH_MAX_PATH
        || data->pending[2] != 0 || data->pending[3] != 0
        || data->fileStoredSize != data->fileRawSize) {
-        patch_set_error(data, "Invalid file record.");
+        patch_set_error(data, i18n_get(I18N_INVALID_FILE_RECORD));
         return R_APP_BAD_DATA;
     }
     data->state = PATCH_PARSE_PATH;
@@ -581,7 +582,7 @@ static Result patch_existing_file_matches(patchinstall_data* data, u64 existingS
     }
     data->fileCompareMs += osGetTime() - start;
     if(R_FAILED(res)) {
-        patch_set_error(data, "Failed to compare an existing patch file.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_COMPARE_AN_EXISTING_PATCH_FILE));
         return res;
     }
 
@@ -593,17 +594,17 @@ static Result patch_open_record_file(patchinstall_data* data) {
     memcpy(data->relativePath, data->pending, data->pathLength);
     data->relativePath[data->pathLength] = '\0';
     if(!patch_valid_relative_path(data->relativePath, data->pathLength)) {
-        patch_set_error(data, "Unsafe path in patch bundle.");
+        patch_set_error(data, i18n_get(I18N_UNSAFE_PATH_IN_PATCH_BUNDLE));
         return R_APP_BAD_DATA;
     }
     if(data->previousPath[0] != '\0' && strcasecmp(data->previousPath, data->relativePath) >= 0) {
-        patch_set_error(data, "Patch paths are duplicated or not sorted.");
+        patch_set_error(data, i18n_get(I18N_PATCH_PATHS_ARE_DUPLICATED_OR_NOT_SORTED));
         return R_APP_BAD_DATA;
     }
     char target[FILE_PATH_MAX] = {'\0'};
     int targetLength = snprintf(target, sizeof(target), "%s/%s", data->targetRomfs, data->relativePath);
     if(targetLength < 0 || targetLength >= (int) sizeof(target)) {
-        patch_set_error(data, "Patch path exceeds the 3DS filesystem limit.");
+        patch_set_error(data, i18n_get(I18N_PATCH_PATH_EXCEEDS_THE_3DS_FILESYSTEM_LIMIT));
         return R_APP_OUT_OF_RANGE;
     }
 
@@ -613,7 +614,7 @@ static Result patch_open_record_file(patchinstall_data* data) {
                                       data->previousPath);
     if(R_FAILED(res)) {
         data->fileSetupMs += osGetTime() - setupStart;
-        patch_set_error(data, "Failed to create a destination directory.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_CREATE_A_DESTINATION_DIRECTORY));
         return res;
     }
 
@@ -638,7 +639,7 @@ static Result patch_open_record_file(patchinstall_data* data) {
             FSFILE_Close(data->file);
             data->file = 0;
         }
-        patch_set_error(data, "Failed to open or inspect a target patch file.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_OPEN_OR_INSPECT_A_TARGET_PATCH_FILE));
         return res;
     }
 
@@ -661,7 +662,7 @@ static Result patch_open_record_file(patchinstall_data* data) {
     }
     if(R_FAILED(res)) {
         patch_close_current_file(data, false);
-        patch_set_error(data, "Failed to prepare a target patch file.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_PREPARE_A_TARGET_PATCH_FILE));
         return res;
     }
 
@@ -680,7 +681,7 @@ static Result patch_finish_record(patchinstall_data* data) {
        || data->fileRawWritten != data->fileRawSize
        || data->fileCrc != data->fileCrcExpected) {
         patch_close_current_file(data, false);
-        patch_set_error(data, "File size or CRC32 verification failed.");
+        patch_set_error(data, i18n_get(I18N_FILE_SIZE_OR_CRC32_VERIFICATION_FAILED));
         return R_APP_BAD_DATA;
     }
 
@@ -707,7 +708,7 @@ static Result patch_finish_record(patchinstall_data* data) {
         patch_close_current_file(data, false);
     }
     if(R_FAILED(res)) {
-        patch_set_error(data, "Failed to finalize a target patch file.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_FINALIZE_A_TARGET_PATCH_FILE));
         return res;
     }
     data->filesDone++;
@@ -724,7 +725,7 @@ static Result patch_finish_record(patchinstall_data* data) {
     data->storedDone += data->fileStoredRead;
     if(data->filesDone == data->fileCount) {
         if(data->rawDone != data->totalRaw || data->storedDone != data->totalStored) {
-            patch_set_error(data, "Bundle totals do not match the records.");
+            patch_set_error(data, i18n_get(I18N_BUNDLE_TOTALS_DO_NOT_MATCH_THE_RECORDS));
             return R_APP_BAD_DATA;
         }
         data->state = PATCH_PARSE_COMPLETE;
@@ -751,7 +752,7 @@ static Result patch_http_callback(void* userData, void* buffer, size_t size) {
 
     while(remaining > 0) {
         if(data->state == PATCH_PARSE_COMPLETE) {
-            patch_set_error(data, "Unexpected data after the final record.");
+            patch_set_error(data, i18n_get(I18N_UNEXPECTED_DATA_AFTER_THE_FINAL_RECORD));
             return R_APP_BAD_DATA;
         }
 
@@ -992,13 +993,13 @@ static void patch_worker(void* arg) {
         if(R_SUCCEEDED(res) && !data->cacheHit
            && (data->state != PATCH_PARSE_RECORD || data->pendingHave != 0
                || data->filesDone != 0)) {
-            patch_set_error(data, "The header range ended at an invalid boundary.");
+            patch_set_error(data, i18n_get(I18N_THE_HEADER_RANGE_ENDED_AT_AN_INVALID_BOUNDARY));
             res = R_APP_BAD_DATA;
         }
         if(R_SUCCEEDED(res) && !data->cacheHit) {
             data->compareBuffer = (u8*) memalign(0x1000, PATCH_COMPARE_BUFFER_SIZE);
             if(data->compareBuffer == NULL) {
-                patch_set_error(data, "Failed to allocate the comparison buffer.");
+                patch_set_error(data, i18n_get(I18N_FAILED_TO_ALLOCATE_THE_COMPARISON_BUFFER));
                 res = R_APP_OUT_OF_MEMORY;
             } else {
                 // Optional: correctness does not depend on this allocation.
@@ -1024,7 +1025,7 @@ static void patch_worker(void* arg) {
             res = patch_http_check_running(data);
         }
         if(R_SUCCEEDED(res) && data->state != PATCH_PARSE_COMPLETE) {
-            patch_set_error(data, "Patch bundle was truncated.");
+            patch_set_error(data, i18n_get(I18N_PATCH_BUNDLE_WAS_TRUNCATED));
             res = R_APP_BAD_DATA;
         }
         if(R_SUCCEEDED(res) && !data->cacheHit && data->cacheAllowed) {
@@ -1039,7 +1040,7 @@ static void patch_worker(void* arg) {
         }
         fs_close_archive(data->archive);
     } else {
-        patch_set_error(data, "Failed to open the SD card archive.");
+        patch_set_error(data, i18n_get(I18N_FAILED_TO_OPEN_THE_SD_CARD_ARCHIVE));
     }
 
     free(data->compareBuffer);
@@ -1120,20 +1121,20 @@ static void patch_progress_update(ui_view* view, void* userData, float* progress
         ui_pop();
         info_destroy(view);
         if(R_SUCCEEDED(data->result)) {
-            static char message[320];
+            static char message[512];
             u64 totalMs = data->downloadMs + data->finishFilesMs;
             if(data->cacheHit) {
                 snprintf(message, sizeof(message),
-                         "Cache: HIT  Files: %lu\nTime: %.1f s\nOnly the 72-byte header was read.\nTarget file reads/writes: 0\nHold X on Yes to verify next time.",
+                         i18n_get(I18N_CACHE_HIT_FILES_LU_TIME_1F_S_ONLY_THE_72),
                          data->filesDone, totalMs / 1000.0);
-                prompt_display_notify("Patch installed", message, COLOR_TEXT, NULL, NULL, NULL);
+                prompt_display_notify(i18n_get(I18N_PATCH_INSTALLED), message, COLOR_TEXT, NULL, NULL, NULL);
                 patch_free_data(data);
                 return;
             }
             double filesPerSecond = totalMs > 0 ? data->filesDone * 1000.0 / totalMs : 0;
             double effectiveKiB = totalMs > 0 ? data->rawDone * 1000.0 / totalMs / 1024.0 : 0;
             snprintf(message, sizeof(message),
-                     "Files: %lu  Skip: %lu\nTime: %.1f s\nRate: %.1f files/s  %.0f KiB/s\nCompare: %.1f s  Setup: %.1f s\nWrite: %.1f s  Calls: %lu\nClose: %.1f s  Saved: %.2f MiB\nCard: %lu KiB HS:%c CLK:%c Cache:%c",
+                     i18n_get(I18N_FILES_LU_SKIP_LU_TIME_1F_S_RATE_1F_FILES),
                      data->filesDone, data->filesSkipped,
                      totalMs / 1000.0, filesPerSecond, effectiveKiB,
                      data->fileCompareMs / 1000.0, data->fileSetupMs / 1000.0,
@@ -1143,21 +1144,21 @@ static void patch_progress_update(ui_view* view, void* userData, float* progress
                      data->sdInfoReady ? (data->sdHighSpeed ? 'Y' : 'N') : '?',
                      data->sdInfoReady ? (data->sdHighestClock ? 'Y' : 'N') : '?',
                      data->cacheSaved ? 'Y' : 'N');
-            prompt_display_notify("Patch installed", message, COLOR_TEXT, NULL, NULL, NULL);
+            prompt_display_notify(i18n_get(I18N_PATCH_INSTALLED), message, COLOR_TEXT, NULL, NULL, NULL);
         } else if(data->result == R_APP_CANCELLED) {
-            prompt_display_notify("Cancelled",
-                                  "Completed files remain updated.\nThe current file may be incomplete.\nResend the patch to finish safely.",
+            prompt_display_notify(i18n_get(I18N_CANCELLED),
+                                  i18n_get(I18N_COMPLETED_FILES_REMAIN_UPDATED_THE_CURRENT_FILE_MAY_BE_INCOMPLETE),
                                   COLOR_TEXT, NULL, NULL, NULL);
         } else {
-            error_display_res(NULL, NULL, data->result, "%s", data->error[0] != '\0' ? data->error : "LayeredFS patch failed.");
+            error_display_res(NULL, NULL, data->result, "%s", data->error[0] != '\0' ? data->error : i18n_get(I18N_LAYEREDFS_PATCH_FAILED));
         }
         patch_free_data(data);
         return;
     }
 
     const char* phaseText[] = {
-        [PATCH_RECEIVING] = "Receiving and installing files...",
-        [PATCH_FINISHING_FILES] = "Finishing queued files...",
+        [PATCH_RECEIVING] = i18n_get(I18N_RECEIVING_AND_INSTALLING_FILES),
+        [PATCH_FINISHING_FILES] = i18n_get(I18N_FINISHING_QUEUED_FILES),
     };
     if(current.rawTotal > 0) {
         *progress = (float) current.rawProcessed / (float) current.rawTotal;
@@ -1167,7 +1168,7 @@ static void patch_progress_update(ui_view* view, void* userData, float* progress
         *progress = 0;
     }
     snprintf(text, PROGRESS_TEXT_MAX,
-             "%s\nFiles: %lu/%lu  %.1f/s  Skip: %lu\nNet: %.2f/%.2f MiB  %.0f KiB/s\nSD: %.2f MiB  %.0f KiB/s",
+             i18n_get(I18N_S_FILES_LU_LU_1F_S_SKIP_LU_NET_2F),
              phaseText[current.phase], current.filesDone, current.fileCount,
              filesPerSecond, current.filesSkipped,
              current.downloaded / 1048576.0, current.downloadTotal / 1048576.0,
@@ -1217,7 +1218,7 @@ static void patch_confirm_response(ui_view* view, void* userData, u32 response) 
         data->result = res;
         data->finished = true;
     }
-    info_display("LayeredFS patch", "Press B to cancel.", true, data, patch_progress_update, NULL);
+    info_display(i18n_get(I18N_LAYEREDFS_PATCH), i18n_get(I18N_PRESS_B_TO_CANCEL_2), true, data, patch_progress_update, NULL);
 }
 
 static void patch_update_discovery(patchinstall_data* data) {
@@ -1291,8 +1292,8 @@ bool patchinstall_listener_poll(void* listener) {
 void patchinstall_listener_prompt(void* listener) {
     patchinstall_data* data = (patchinstall_data*) listener;
     prompt_display_yes_no(
-        "Install LayeredFS patch?",
-        "Fast cache skips completed bundles.\nHold X while choosing Yes to verify.\nOther files will be kept.\nIf interrupted, resend the patch.",
+        i18n_get(I18N_INSTALL_LAYEREDFS_PATCH),
+        i18n_get(I18N_FAST_CACHE_SKIPS_COMPLETED_BUNDLES_HOLD_X_WHILE_CHOOSING_YES),
         COLOR_TEXT, data, NULL, patch_confirm_response);
 }
 
@@ -1320,7 +1321,7 @@ static void patch_wait_update(ui_view* view, void* userData, float* progress, ch
 
     struct in_addr address = {(in_addr_t) gethostid()};
     snprintf(text, PROGRESS_TEXT_MAX,
-             "Waiting for CIA Bridge...\nIP: %s\nPort: %d\nStreaming: raw\nDirect incremental overwrite: enabled",
+             i18n_get(I18N_WAITING_FOR_CIA_BRIDGE_IP_S_PORT_D_STREAMING_RAW),
              inet_ntoa(address), PATCH_CONTROL_PORT);
 }
 
@@ -1353,7 +1354,7 @@ void* patchinstall_listener_open() {
 void patchinstall_open() {
     patchinstall_data* data = (patchinstall_data*) patchinstall_listener_open();
     if(data == NULL) {
-        error_display_errno(NULL, NULL, errno, "Failed to start the patch receiver.");
+        error_display_errno(NULL, NULL, errno, i18n_get(I18N_FAILED_TO_START_THE_PATCH_RECEIVER));
         return;
     }
 
@@ -1375,5 +1376,5 @@ void patchinstall_open() {
         data->discoverySocket = 0;
     }
 
-    info_display("LayeredFS patch receiver", "B: Return", false, data, patch_wait_update, NULL);
+    info_display(i18n_get(I18N_LAYEREDFS_PATCH_RECEIVER), i18n_get(I18N_B_RETURN), false, data, patch_wait_update, NULL);
 }

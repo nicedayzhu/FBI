@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -78,7 +79,7 @@ static Result action_delete_restore(void* data, u32 index) {
 }
 
 static bool action_delete_error(void* data, u32 index, Result res, ui_view** errorView) {
-    *errorView = error_display_res(data, action_delete_draw_top, res, "Failed to delete content.");
+    *errorView = error_display_res(data, action_delete_draw_top, res, i18n_get(I18N_FAILED_TO_DELETE_CONTENT));
     return true;
 }
 
@@ -105,7 +106,7 @@ static void action_delete_update(ui_view* view, void* data, float* progress, cha
         info_destroy(view);
 
         if(R_SUCCEEDED(deleteData->deleteInfo.result)) {
-            prompt_display_notify("Success", "Deleted.", COLOR_TEXT, NULL, NULL, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_DELETED), COLOR_TEXT, NULL, NULL, NULL);
         }
 
         action_delete_free_data(deleteData);
@@ -127,9 +128,9 @@ static void action_delete_onresponse(ui_view* view, void* data, u32 response) {
     if(response == PROMPT_YES) {
         Result res = task_data_op(&deleteData->deleteInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Deleting", "Press B to cancel.", true, data, action_delete_update, action_delete_draw_top);
+            info_display(i18n_get(I18N_DELETING), i18n_get(I18N_PRESS_B_TO_CANCEL), true, data, action_delete_update, action_delete_draw_top);
         } else {
-            error_display_res(NULL, NULL, res, "Failed to initiate delete operation.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_DELETE_OPERATION));
 
             action_delete_free_data(deleteData);
         }
@@ -161,9 +162,9 @@ static void action_delete_loading_update(ui_view* view, void* data, float* progr
             loadingData->deleteData->deleteInfo.total = linked_list_size(&loadingData->deleteData->contents);
             loadingData->deleteData->deleteInfo.processed = loadingData->deleteData->deleteInfo.total;
 
-            prompt_display_yes_no("Confirmation", loadingData->message, COLOR_TEXT, loadingData->deleteData, action_delete_draw_top, action_delete_onresponse);
+            prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), loadingData->message, COLOR_TEXT, loadingData->deleteData, action_delete_draw_top, action_delete_onresponse);
         } else {
-            error_display_res(NULL, NULL, loadingData->popData.result, "Failed to populate content list.");
+            error_display_res(NULL, NULL, loadingData->popData.result, i18n_get(I18N_FAILED_TO_POPULATE_CONTENT_LIST));
 
             action_delete_free_data(loadingData->deleteData);
         }
@@ -176,13 +177,13 @@ static void action_delete_loading_update(ui_view* view, void* data, float* progr
         svcSignalEvent(loadingData->popData.cancelEvent);
     }
 
-    snprintf(text, PROGRESS_TEXT_MAX, "Fetching content list...");
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_FETCHING_CONTENT_LIST));
 }
 
 static void action_delete_internal(linked_list* items, list_item* selected, const char* message, bool recursive, bool includeBase, bool ciasOnly, bool ticketsOnly) {
     delete_data* data = (delete_data*) calloc(1, sizeof(delete_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate delete data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_DELETE_DATA));
 
         return;
     }
@@ -192,7 +193,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     file_info* targetInfo = (file_info*) selected->data;
     Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, false);
     if(R_FAILED(targetCreateRes)) {
-        error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
+        error_display_res(NULL, NULL, targetCreateRes, i18n_get(I18N_FAILED_TO_CREATE_TARGET_FILE_ITEM));
 
         action_delete_free_data(data);
         return;
@@ -217,7 +218,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
 
     delete_loading_data* loadingData = (delete_loading_data*) calloc(1, sizeof(delete_loading_data));
     if(loadingData == NULL) {
-        error_display(NULL, NULL, "Failed to allocate loading data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_LOADING_DATA));
 
         action_delete_free_data(data);
         return;
@@ -237,32 +238,32 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
 
     Result listRes = task_populate_files(&loadingData->popData);
     if(R_FAILED(listRes)) {
-        error_display_res(NULL, NULL, listRes, "Failed to initiate content list population.");
+        error_display_res(NULL, NULL, listRes, i18n_get(I18N_FAILED_TO_INITIATE_CONTENT_LIST_POPULATION));
 
         free(loadingData);
         action_delete_free_data(data);
         return;
     }
 
-    info_display("Loading", "Press B to cancel.", false, loadingData, action_delete_loading_update, action_delete_loading_draw_top);
+    info_display(i18n_get(I18N_LOADING), i18n_get(I18N_PRESS_B_TO_CANCEL), false, loadingData, action_delete_loading_update, action_delete_loading_draw_top);
 }
 
 void action_delete_file(linked_list* items, list_item* selected) {
-    action_delete_internal(items, selected, "Delete the selected file?", false, true, false, false);
+    action_delete_internal(items, selected, i18n_get(I18N_DELETE_THE_SELECTED_FILE), false, true, false, false);
 }
 
 void action_delete_dir(linked_list* items, list_item* selected) {
-    action_delete_internal(items, selected, "Delete the current directory?", true, true, false, false);
+    action_delete_internal(items, selected, i18n_get(I18N_DELETE_THE_CURRENT_DIRECTORY), true, true, false, false);
 }
 
 void action_delete_dir_contents(linked_list* items, list_item* selected) {
-    action_delete_internal(items, selected, "Delete all contents of the current directory?", true, false, false, false);
+    action_delete_internal(items, selected, i18n_get(I18N_DELETE_ALL_CONTENTS_OF_THE_CURRENT_DIRECTORY), true, false, false, false);
 }
 
 void action_delete_dir_cias(linked_list* items, list_item* selected) {
-    action_delete_internal(items, selected, "Delete all CIAs in the current directory?", false, false, true, false);
+    action_delete_internal(items, selected, i18n_get(I18N_DELETE_ALL_CIAS_IN_THE_CURRENT_DIRECTORY), false, false, true, false);
 }
 
 void action_delete_dir_tickets(linked_list* items, list_item* selected) {
-    action_delete_internal(items, selected, "Delete all tickets in the current directory?", false, false, false, true);
+    action_delete_internal(items, selected, i18n_get(I18N_DELETE_ALL_TICKETS_IN_THE_CURRENT_DIRECTORY), false, false, false, true);
 }

@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+
+set -eu
+
+if [ -x /usr/bin/zip ]; then
+    exec /usr/bin/zip "$@" -x "*.elf"
+fi
+
+if [ -x /bin/zip ]; then
+    exec /bin/zip "$@" -x "*.elf"
+fi
+
+if [ "${1-}" != "-r" ] || [ -z "${2-}" ]; then
+    echo "zip compatibility wrapper: expected 'zip -r <archive> ...'" >&2
+    exit 2
+fi
+
+if ! command -v cygpath >/dev/null 2>&1; then
+    echo "zip compatibility wrapper: neither zip nor an MSYS2 PowerShell bridge is available" >&2
+    exit 127
+fi
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+fallback_script=$(cygpath -w "$script_dir/zip-fallback.ps1")
+
+exec /c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
+    -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
+    -File "$fallback_script" -ArchivePath "$2"

@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,7 +104,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
 
             bool n3ds = false;
             if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-                ui_view* view = prompt_display_yes_no("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, data, action_install_url_draw_top, action_install_url_n3ds_onresponse);
+                ui_view* view = prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_TITLE_IS_INTENDED_FOR_NEW_3DS_SYSTEMS_CONTINUE), COLOR_TEXT, data, action_install_url_draw_top, action_install_url_n3ds_onresponse);
                 if(view != NULL) {
                     svcWaitSynchronization(view->active, U64_MAX);
                 }
@@ -245,9 +246,9 @@ static bool action_install_url_error(void* data, u32 index, Result res, ui_view*
 
     char* url = installData->urls[index];
     if(strlen(url) > 38) {
-        *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
+        *errorView = error_display_res(data, action_install_url_draw_top, res, i18n_get(I18N_FAILED_TO_INSTALL_FROM_URL_35S), url);
     } else {
-        *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
+        *errorView = error_display_res(data, action_install_url_draw_top, res, i18n_get(I18N_FAILED_TO_INSTALL_FROM_URL_38S), url);
     }
 
     return true;
@@ -261,7 +262,7 @@ static void action_install_url_install_update(ui_view* view, void* data, float* 
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display_notify("Success", "Install finished.", COLOR_TEXT, NULL, NULL, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_INSTALL_FINISHED), COLOR_TEXT, NULL, NULL, NULL);
         }
 
         action_install_url_free_data(installData);
@@ -274,7 +275,7 @@ static void action_install_url_install_update(ui_view* view, void* data, float* 
     }
 
     *progress = installData->installInfo.currTotal != 0 ? (float) ((double) installData->installInfo.currProcessed / (double) installData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", installData->installInfo.processed, installData->installInfo.total,
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_LU_LU_2F_S_2F_S_2F_S_S_ETA), installData->installInfo.processed, installData->installInfo.total,
              ui_get_display_size(installData->installInfo.currProcessed),
              ui_get_display_size_units(installData->installInfo.currProcessed),
              ui_get_display_size(installData->installInfo.currTotal),
@@ -290,9 +291,9 @@ static void action_install_url_confirm_onresponse(ui_view* view, void* data, u32
     if(response == PROMPT_YES) {
         Result res = task_data_op(&installData->installInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Installing From URL(s)", "Press B to cancel.", true, data, action_install_url_install_update, action_install_url_draw_top);
+            info_display(i18n_get(I18N_INSTALLING_FROM_URL_S), i18n_get(I18N_PRESS_B_TO_CANCEL_2), true, data, action_install_url_install_update, action_install_url_draw_top);
         } else {
-            error_display_res(NULL, NULL, res, "Failed to initiate installation.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_INSTALLATION));
 
             action_install_url_free_data(installData);
         }
@@ -307,7 +308,7 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                         void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
     install_url_data* data = (install_url_data*) calloc(1, sizeof(install_url_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate URL install data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_URL_INSTALL_DATA));
 
         return;
     }
@@ -399,5 +400,5 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
 
     data->installInfo.finished = true;
 
-    prompt_display_yes_no("Confirmation", confirmMessage, COLOR_TEXT, data, action_install_url_draw_top, action_install_url_confirm_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), confirmMessage, COLOR_TEXT, data, action_install_url_draw_top, action_install_url_confirm_onresponse);
 }

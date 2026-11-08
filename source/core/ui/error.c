@@ -1,3 +1,4 @@
+#include "../i18n.h"
 #include <malloc.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -17,71 +18,71 @@
 static const char* level_to_string(Result res) {
     switch(R_LEVEL(res)) {
         case RL_SUCCESS:
-            return "Success";
+            return i18n_get(I18N_SUCCESS);
         case RL_INFO:
-            return "Info";
+            return i18n_get(I18N_INFO);
         case RL_FATAL:
-            return "Fatal";
+            return i18n_get(I18N_FATAL);
         case RL_RESET:
-            return "Reset";
+            return i18n_get(I18N_RESET);
         case RL_REINITIALIZE:
-            return "Reinitialize";
+            return i18n_get(I18N_REINITIALIZE);
         case RL_USAGE:
-            return "Usage";
+            return i18n_get(I18N_USAGE);
         case RL_PERMANENT:
-            return "Permanent";
+            return i18n_get(I18N_PERMANENT);
         case RL_TEMPORARY:
-            return "Temporary";
+            return i18n_get(I18N_TEMPORARY);
         case RL_STATUS:
-            return "Status";
+            return i18n_get(I18N_STATUS);
         default:
-            return "<unknown>";
+            return i18n_get(I18N_UNKNOWN);
     }
 }
 
 static const char* summary_to_string(Result res) {
     switch(R_SUMMARY(res)) {
         case RS_SUCCESS:
-            return "Success";
+            return i18n_get(I18N_SUCCESS);
         case RS_NOP:
-            return "Nop";
+            return i18n_get(I18N_NOP);
         case RS_WOULDBLOCK:
-            return "Would block";
+            return i18n_get(I18N_WOULD_BLOCK);
         case RS_OUTOFRESOURCE:
-            return "Out of resource";
+            return i18n_get(I18N_OUT_OF_RESOURCE);
         case RS_NOTFOUND:
-            return "Not found";
+            return i18n_get(I18N_NOT_FOUND);
         case RS_INVALIDSTATE:
-            return "Invalid state";
+            return i18n_get(I18N_INVALID_STATE);
         case RS_NOTSUPPORTED:
-            return "Not supported";
+            return i18n_get(I18N_NOT_SUPPORTED);
         case RS_INVALIDARG:
-            return "Invalid argument";
+            return i18n_get(I18N_INVALID_ARGUMENT);
         case RS_WRONGARG:
-            return "Wrong argument";
+            return i18n_get(I18N_WRONG_ARGUMENT);
         case RS_CANCELED:
-            return "Canceled";
+            return i18n_get(I18N_CANCELED);
         case RS_STATUSCHANGED:
-            return "Status changed";
+            return i18n_get(I18N_STATUS_CHANGED);
         case RS_INTERNAL:
-            return "Internal";
+            return i18n_get(I18N_INTERNAL);
         default:
-            return "<unknown>";
+            return i18n_get(I18N_UNKNOWN);
     }
 }
 
 static const char* module_to_string(Result res) {
     switch(R_MODULE(res)) {
         case RM_COMMON:
-            return "Common";
+            return i18n_get(I18N_COMMON);
         case RM_KERNEL:
-            return "Kernel";
+            return i18n_get(I18N_KERNEL);
         case RM_UTIL:
-            return "Util";
+            return i18n_get(I18N_UTIL);
         case RM_FILE_SERVER:
-            return "File server";
+            return i18n_get(I18N_FILE_SERVER);
         case RM_LOADER_SERVER:
-            return "Loader server";
+            return i18n_get(I18N_LOADER_SERVER);
         case RM_TCB:
             return "TCB";
         case RM_OS:
@@ -141,7 +142,7 @@ static const char* module_to_string(Result res) {
         case RM_HIO:
             return "HIO";
         case RM_UPDATER:
-            return "Updater";
+            return i18n_get(I18N_UPDATER);
         case RM_MIC:
             return "MIC";
         case RM_FND:
@@ -171,11 +172,11 @@ static const char* module_to_string(Result res) {
         case RM_NEX:
             return "NEX";
         case RM_FRIENDS:
-            return "Friends";
+            return i18n_get(I18N_FRIENDS);
         case RM_RDT:
             return "RDT";
         case RM_APPLET:
-            return "Applet";
+            return i18n_get(I18N_APPLET);
         case RM_NIM:
             return "NIM";
         case RM_PTM:
@@ -201,7 +202,7 @@ static const char* module_to_string(Result res) {
         case RM_DBM:
             return "DBM";
         case RM_CONFIG:
-            return "Config";
+            return i18n_get(I18N_CONFIG);
         case RM_PS:
             return "PS";
         case RM_CEC:
@@ -215,7 +216,7 @@ static const char* module_to_string(Result res) {
         case RM_CUP:
             return "CUP";
         case RM_GYROSCOPE:
-            return "Gyroscope";
+            return i18n_get(I18N_GYROSCOPE);
         case RM_MCU:
             return "MCU";
         case RM_NS:
@@ -231,7 +232,7 @@ static const char* module_to_string(Result res) {
         case RM_EC:
             return "EC";
         case RM_WEB_BROWSER:
-            return "Web browser";
+            return i18n_get(I18N_WEB_BROWSER);
         case RM_TEST:
             return "TEST";
         case RM_ENC:
@@ -265,9 +266,9 @@ static const char* module_to_string(Result res) {
         case RM_NFP:
             return "NFP";
         case RM_APPLICATION:
-            return "Application";
+            return i18n_get(I18N_APPLICATION);
         default:
-            return "<unknown>";
+            return i18n_get(I18N_UNKNOWN);
     }
 }
 
@@ -281,7 +282,7 @@ static const char* description_to_string(Result res) {
         case RM_KERNEL:
             switch(description) {
                 case 2:
-                    return "Invalid DMA buffer memory permissions";
+                    return i18n_get(I18N_INVALID_DMA_BUFFER_MEMORY_PERMISSIONS);
                 default:
                     break;
             }
@@ -290,21 +291,21 @@ static const char* description_to_string(Result res) {
         case RM_OS:
             switch(description) {
                 case 1:
-                    return "Out of synchronization object";
+                    return i18n_get(I18N_OUT_OF_SYNCHRONIZATION_OBJECT);
                 case 2:
-                    return "Out of shared memory objects";
+                    return i18n_get(I18N_OUT_OF_SHARED_MEMORY_OBJECTS);
                 case 9:
-                    return "Out of session objects";
+                    return i18n_get(I18N_OUT_OF_SESSION_OBJECTS);
                 case 10:
-                    return "Not enough memory for allocation";
+                    return i18n_get(I18N_NOT_ENOUGH_MEMORY_FOR_ALLOCATION);
                 case 20:
-                    return "Wrong permissions for unprivileged access";
+                    return i18n_get(I18N_WRONG_PERMISSIONS_FOR_UNPRIVILEGED_ACCESS);
                 case 26:
-                    return "Session closed by remote process";
+                    return i18n_get(I18N_SESSION_CLOSED_BY_REMOTE_PROCESS);
                 case 47:
-                    return "Invalid command header";
+                    return i18n_get(I18N_INVALID_COMMAND_HEADER);
                 case 52:
-                    return "Max port connections exceeded";
+                    return i18n_get(I18N_MAX_PORT_CONNECTIONS_EXCEEDED);
                 default:
                     break;
             }
@@ -313,49 +314,49 @@ static const char* description_to_string(Result res) {
         case RM_FS:
             switch(description) {
                 case 101:
-                    return "Archive not mounted";
+                    return i18n_get(I18N_ARCHIVE_NOT_MOUNTED);
                 case 120:
-                    return "Doesn't exist / Failed to open";
+                    return i18n_get(I18N_DOESN_T_EXIST_FAILED_TO_OPEN);
                 case 141:
-                    return "Game card not inserted";
+                    return i18n_get(I18N_GAME_CARD_NOT_INSERTED);
                 case 171:
-                    return "Bus: Busy / Underrun";
+                    return i18n_get(I18N_BUS_BUSY_UNDERRUN);
                 case 172:
-                    return "Bus: Illegal function";
+                    return i18n_get(I18N_BUS_ILLEGAL_FUNCTION);
                 case 190:
-                    return "Already exists / Failed to create";
+                    return i18n_get(I18N_ALREADY_EXISTS_FAILED_TO_CREATE);
                 case 210:
-                    return "Partition full";
+                    return i18n_get(I18N_PARTITION_FULL);
                 case 230:
-                    return "Illegal operation / File in use";
+                    return i18n_get(I18N_ILLEGAL_OPERATION_FILE_IN_USE);
                 case 231:
-                    return "Resource locked";
+                    return i18n_get(I18N_RESOURCE_LOCKED);
                 case 250:
-                    return "FAT operation denied";
+                    return i18n_get(I18N_FAT_OPERATION_DENIED);
                 case 265:
-                    return "Bus: Timeout";
+                    return i18n_get(I18N_BUS_TIMEOUT);
                 case 331:
-                    return "Bus error / TWL partition invalid";
+                    return i18n_get(I18N_BUS_ERROR_TWL_PARTITION_INVALID);
                 case 332:
-                    return "Bus: Stop bit error";
+                    return i18n_get(I18N_BUS_STOP_BIT_ERROR);
                 case 391:
-                    return "Hash verification failure";
+                    return i18n_get(I18N_HASH_VERIFICATION_FAILURE);
                 case 392:
-                    return "RSA/Hash verification failure";
+                    return i18n_get(I18N_RSA_HASH_VERIFICATION_FAILURE);
                 case 395:
-                    return "Invalid RomFS or save data block hash";
+                    return i18n_get(I18N_INVALID_ROMFS_OR_SAVE_DATA_BLOCK_HASH);
                 case 630:
-                    return "Archive permission denied";
+                    return i18n_get(I18N_ARCHIVE_PERMISSION_DENIED);
                 case 702:
-                    return "Invalid path / Inaccessible archive";
+                    return i18n_get(I18N_INVALID_PATH_INACCESSIBLE_ARCHIVE);
                 case 705:
-                    return "Offset out of bounds";
+                    return i18n_get(I18N_OFFSET_OUT_OF_BOUNDS);
                 case 721:
-                    return "Reached file size limit";
+                    return i18n_get(I18N_REACHED_FILE_SIZE_LIMIT);
                 case 760:
-                    return "Unsupported operation";
+                    return i18n_get(I18N_UNSUPPORTED_OPERATION);
                 case 761:
-                    return "ExeFS read size mismatch";
+                    return i18n_get(I18N_EXEFS_READ_SIZE_MISMATCH);
                 default:
                     break;
             }
@@ -364,11 +365,11 @@ static const char* description_to_string(Result res) {
         case RM_SRV:
             switch(description) {
                 case 5:
-                    return "Invalid service name length";
+                    return i18n_get(I18N_INVALID_SERVICE_NAME_LENGTH);
                 case 6:
-                    return "Service access denied";
+                    return i18n_get(I18N_SERVICE_ACCESS_DENIED);
                 case 7:
-                    return "String size mismatch";
+                    return i18n_get(I18N_STRING_SIZE_MISMATCH);
                 default:
                     break;
             }
@@ -377,47 +378,47 @@ static const char* description_to_string(Result res) {
         case RM_AM:
             switch(description) {
                 case 4:
-                    return "Wrong installation state";
+                    return i18n_get(I18N_WRONG_INSTALLATION_STATE);
                 case 37:
-                    return "Invalid NCCH";
+                    return i18n_get(I18N_INVALID_NCCH);
                 case 39:
-                    return "Invalid or outdated title version";
+                    return i18n_get(I18N_INVALID_OR_OUTDATED_TITLE_VERSION);
                 case 41:
-                    return "Error type 1";
+                    return i18n_get(I18N_ERROR_TYPE_1_2);
                 case 43:
-                    return "Database does not exist";
+                    return i18n_get(I18N_DATABASE_DOES_NOT_EXIST);
                 case 44:
-                    return "Attempted to delete system title";
+                    return i18n_get(I18N_ATTEMPTED_TO_DELETE_SYSTEM_TITLE);
                 case 101:
-                    return "Error type -1";
+                    return i18n_get(I18N_ERROR_TYPE_1);
                 case 102:
-                    return "Error type -2";
+                    return i18n_get(I18N_ERROR_TYPE_2);
                 case 103:
-                    return "Error type -3";
+                    return i18n_get(I18N_ERROR_TYPE_3);
                 case 104:
-                    return "Error type -4";
+                    return i18n_get(I18N_ERROR_TYPE_4);
                 case 105:
-                    return "Error type -5";
+                    return i18n_get(I18N_ERROR_TYPE_5);
                 case 106:
-                    return "Cert signature or hash check failed";
+                    return i18n_get(I18N_CERT_SIGNATURE_OR_HASH_CHECK_FAILED);
                 case 107:
-                    return "Error type -7";
+                    return i18n_get(I18N_ERROR_TYPE_7);
                 case 108:
-                    return "Error type -8";
+                    return i18n_get(I18N_ERROR_TYPE_8);
                 case 109:
-                    return "Error type -9";
+                    return i18n_get(I18N_ERROR_TYPE_9);
                 case 110:
-                    return "Error type -10";
+                    return i18n_get(I18N_ERROR_TYPE_10);
                 case 111:
-                    return "Error type -11";
+                    return i18n_get(I18N_ERROR_TYPE_11);
                 case 112:
-                    return "Error type -12";
+                    return i18n_get(I18N_ERROR_TYPE_12);
                 case 113:
-                    return "Error type -13";
+                    return i18n_get(I18N_ERROR_TYPE_13);
                 case 114:
-                    return "Error type -14";
+                    return i18n_get(I18N_ERROR_TYPE_14);
                 case 393:
-                    return "Invalid database";
+                    return i18n_get(I18N_INVALID_DATABASE);
                 default:
                     break;
             }
@@ -426,13 +427,13 @@ static const char* description_to_string(Result res) {
         case RM_HTTP:
             switch(description) {
                 case 60:
-                    return "Failed to verify TLS certificate";
+                    return i18n_get(I18N_FAILED_TO_VERIFY_TLS_CERTIFICATE);
                 case 70:
-                    return "Network unavailable";
+                    return i18n_get(I18N_NETWORK_UNAVAILABLE);
                 case 102:
-                    return "Wrong context handle";
+                    return i18n_get(I18N_WRONG_CONTEXT_HANDLE);
                 case 105:
-                    return "Request timed out";
+                    return i18n_get(I18N_REQUEST_TIMED_OUT);
                 default:
                     break;
             }
@@ -441,9 +442,9 @@ static const char* description_to_string(Result res) {
         case RM_SSL:
             switch(description) {
                 case 20:
-                    return "Untrusted RootCA";
+                    return i18n_get(I18N_UNTRUSTED_ROOTCA);
                 case 54:
-                    return "RootCertChain handle not found";
+                    return i18n_get(I18N_ROOTCERTCHAIN_HANDLE_NOT_FOUND);
                 default:
                     break;
             }
@@ -452,13 +453,13 @@ static const char* description_to_string(Result res) {
         case RM_SDMC:
             switch(description) {
                 case 1:
-                    return "Bus: Bit23 error";
+                    return i18n_get(I18N_BUS_BIT23_ERROR);
                 case 2:
-                    return "Bus: RX ready error";
+                    return i18n_get(I18N_BUS_RX_READY_ERROR);
                 case 3:
-                    return "Bus: Bit28 error";
+                    return i18n_get(I18N_BUS_BIT28_ERROR);
                 case 4:
-                    return "Bus: Bit27 error";
+                    return i18n_get(I18N_BUS_BIT27_ERROR);
                 default:
                     break;
             }
@@ -467,7 +468,7 @@ static const char* description_to_string(Result res) {
         case RM_MVD:
             switch(description) {
                 case 271:
-                    return "Invalid configuration";
+                    return i18n_get(I18N_INVALID_CONFIGURATION);
                 default:
                     break;
             }
@@ -476,7 +477,7 @@ static const char* description_to_string(Result res) {
         case RM_NFC:
             switch(description) {
                 case 512:
-                    return "Invalid NFC state";
+                    return i18n_get(I18N_INVALID_NFC_STATE);
                 default:
                     break;
             }
@@ -485,7 +486,7 @@ static const char* description_to_string(Result res) {
         case RM_QTM:
             switch(description) {
                 case 8:
-                    return "Camera busy";
+                    return i18n_get(I18N_CAMERA_BUSY);
                 default:
                     break;
             }
@@ -494,148 +495,148 @@ static const char* description_to_string(Result res) {
         case RM_APPLICATION:
             switch(res) {
                 case R_APP_INVALID_ARGUMENT:
-                    return "Invalid argument";
+                    return i18n_get(I18N_INVALID_ARGUMENT);
                 case R_APP_CANCELLED:
-                    return "Operation cancelled";
+                    return i18n_get(I18N_OPERATION_CANCELLED);
                 case R_APP_SKIPPED:
-                    return "Operation skipped";
+                    return i18n_get(I18N_OPERATION_SKIPPED);
                 case R_APP_THREAD_CREATE_FAILED:
-                    return "Thread creation failed";
+                    return i18n_get(I18N_THREAD_CREATION_FAILED);
                 case R_APP_PARSE_FAILED:
-                    return "Parse failed";
+                    return i18n_get(I18N_PARSE_FAILED);
                 case R_APP_BAD_DATA:
-                    return "Bad data";
+                    return i18n_get(I18N_BAD_DATA);
                 case R_APP_HTTP_TOO_MANY_REDIRECTS:
-                    return "Too many redirects";
+                    return i18n_get(I18N_TOO_MANY_REDIRECTS);
                 default:
                     if(res >= R_APP_HTTP_ERROR_BASE && res < R_APP_HTTP_ERROR_END) {
                         switch(res - R_APP_HTTP_ERROR_BASE) {
                             case 100:
-                                return "HTTP 100: Continue";
+                                return i18n_get(I18N_HTTP_100_CONTINUE);
                             case 101:
-                                return "HTTP 101: Switching Protocols";
+                                return i18n_get(I18N_HTTP_101_SWITCHING_PROTOCOLS);
                             case 102:
-                                return "HTTP 102: Processing";
+                                return i18n_get(I18N_HTTP_102_PROCESSING);
                             case 103:
-                                return "HTTP 103: Early Hints";
+                                return i18n_get(I18N_HTTP_103_EARLY_HINTS);
                             case 200:
-                                return "HTTP 200: OK";
+                                return i18n_get(I18N_HTTP_200_OK);
                             case 201:
-                                return "HTTP 201: Created";
+                                return i18n_get(I18N_HTTP_201_CREATED);
                             case 202:
-                                return "HTTP 202: Accepted";
+                                return i18n_get(I18N_HTTP_202_ACCEPTED);
                             case 203:
-                                return "HTTP 203: Non-Authoritative Information";
+                                return i18n_get(I18N_HTTP_203_NON_AUTHORITATIVE_INFORMATION);
                             case 204:
-                                return "HTTP 204: No Content";
+                                return i18n_get(I18N_HTTP_204_NO_CONTENT);
                             case 205:
-                                return "HTTP 205: Reset Content";
+                                return i18n_get(I18N_HTTP_205_RESET_CONTENT);
                             case 206:
-                                return "HTTP 206: Partial Content";
+                                return i18n_get(I18N_HTTP_206_PARTIAL_CONTENT);
                             case 207:
-                                return "HTTP 207: Multi-Status";
+                                return i18n_get(I18N_HTTP_207_MULTI_STATUS);
                             case 208:
-                                return "HTTP 208: Already Reported";
+                                return i18n_get(I18N_HTTP_208_ALREADY_REPORTED);
                             case 226:
-                                return "HTTP 226: IM Used";
+                                return i18n_get(I18N_HTTP_226_IM_USED);
                             case 300:
-                                return "HTTP 300: Multiple Choices";
+                                return i18n_get(I18N_HTTP_300_MULTIPLE_CHOICES);
                             case 301:
-                                return "HTTP 301: Moved Permanently";
+                                return i18n_get(I18N_HTTP_301_MOVED_PERMANENTLY);
                             case 302:
-                                return "HTTP 302: Found";
+                                return i18n_get(I18N_HTTP_302_FOUND);
                             case 303:
-                                return "HTTP 303: See Other";
+                                return i18n_get(I18N_HTTP_303_SEE_OTHER);
                             case 304:
-                                return "HTTP 304: Not Modified";
+                                return i18n_get(I18N_HTTP_304_NOT_MODIFIED);
                             case 305:
-                                return "HTTP 305: Use Proxy";
+                                return i18n_get(I18N_HTTP_305_USE_PROXY);
                             case 306:
-                                return "HTTP 306: Switch Proxy";
+                                return i18n_get(I18N_HTTP_306_SWITCH_PROXY);
                             case 307:
-                                return "HTTP 307: Temporary Redirect";
+                                return i18n_get(I18N_HTTP_307_TEMPORARY_REDIRECT);
                             case 308:
-                                return "HTTP 308: Permanent Redirect";
+                                return i18n_get(I18N_HTTP_308_PERMANENT_REDIRECT);
                             case 400:
-                                return "HTTP 400: Bad Request";
+                                return i18n_get(I18N_HTTP_400_BAD_REQUEST);
                             case 401:
-                                return "HTTP 401: Unauthorized";
+                                return i18n_get(I18N_HTTP_401_UNAUTHORIZED);
                             case 402:
-                                return "HTTP 402: Payment Required";
+                                return i18n_get(I18N_HTTP_402_PAYMENT_REQUIRED);
                             case 403:
-                                return "HTTP 403: Forbidden";
+                                return i18n_get(I18N_HTTP_403_FORBIDDEN);
                             case 404:
-                                return "HTTP 404: Not Found";
+                                return i18n_get(I18N_HTTP_404_NOT_FOUND);
                             case 405:
-                                return "HTTP 405: Method Not Allowed";
+                                return i18n_get(I18N_HTTP_405_METHOD_NOT_ALLOWED);
                             case 406:
-                                return "HTTP 406: Not Acceptable";
+                                return i18n_get(I18N_HTTP_406_NOT_ACCEPTABLE);
                             case 407:
-                                return "HTTP 407: Proxy Authentication Required";
+                                return i18n_get(I18N_HTTP_407_PROXY_AUTHENTICATION_REQUIRED);
                             case 408:
-                                return "HTTP 408: Request Timeout";
+                                return i18n_get(I18N_HTTP_408_REQUEST_TIMEOUT);
                             case 409:
-                                return "HTTP 409: Conflict";
+                                return i18n_get(I18N_HTTP_409_CONFLICT);
                             case 410:
-                                return "HTTP 410: Gone";
+                                return i18n_get(I18N_HTTP_410_GONE);
                             case 411:
-                                return "HTTP 411: Length Required";
+                                return i18n_get(I18N_HTTP_411_LENGTH_REQUIRED);
                             case 412:
-                                return "HTTP 412: Precondition Failed";
+                                return i18n_get(I18N_HTTP_412_PRECONDITION_FAILED);
                             case 413:
-                                return "HTTP 413: Payload Too Large";
+                                return i18n_get(I18N_HTTP_413_PAYLOAD_TOO_LARGE);
                             case 414:
-                                return "HTTP 414: URI Too Long";
+                                return i18n_get(I18N_HTTP_414_URI_TOO_LONG);
                             case 415:
-                                return "HTTP 415: Unsupported Media Type";
+                                return i18n_get(I18N_HTTP_415_UNSUPPORTED_MEDIA_TYPE);
                             case 416:
-                                return "HTTP 416: Range Not Satisfiable";
+                                return i18n_get(I18N_HTTP_416_RANGE_NOT_SATISFIABLE);
                             case 417:
-                                return "HTTP 417: Expectation Failed";
+                                return i18n_get(I18N_HTTP_417_EXPECTATION_FAILED);
                             case 418:
-                                return "HTTP 418: I'm a teapot";
+                                return i18n_get(I18N_HTTP_418_I_M_A_TEAPOT);
                             case 421:
-                                return "HTTP 421: Misdirected Request";
+                                return i18n_get(I18N_HTTP_421_MISDIRECTED_REQUEST);
                             case 422:
-                                return "HTTP 422: Unprocessable Entity";
+                                return i18n_get(I18N_HTTP_422_UNPROCESSABLE_ENTITY);
                             case 423:
-                                return "HTTP 423: Locked";
+                                return i18n_get(I18N_HTTP_423_LOCKED);
                             case 424:
-                                return "HTTP 424: Failed Dependency";
+                                return i18n_get(I18N_HTTP_424_FAILED_DEPENDENCY);
                             case 426:
-                                return "HTTP 426: Upgrade Required";
+                                return i18n_get(I18N_HTTP_426_UPGRADE_REQUIRED);
                             case 428:
-                                return "HTTP 428: Precondition Required";
+                                return i18n_get(I18N_HTTP_428_PRECONDITION_REQUIRED);
                             case 429:
-                                return "HTTP 429: Too Many Requests";
+                                return i18n_get(I18N_HTTP_429_TOO_MANY_REQUESTS);
                             case 431:
-                                return "HTTP 431: Request Header Fields Too Large";
+                                return i18n_get(I18N_HTTP_431_REQUEST_HEADER_FIELDS_TOO_LARGE);
                             case 451:
-                                return "HTTP 451: Unavailable For Legal Reasons";
+                                return i18n_get(I18N_HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS);
                             case 500:
-                                return "HTTP 500: Internal Server Error";
+                                return i18n_get(I18N_HTTP_500_INTERNAL_SERVER_ERROR);
                             case 501:
-                                return "HTTP 501: Not Implemented";
+                                return i18n_get(I18N_HTTP_501_NOT_IMPLEMENTED);
                             case 502:
-                                return "HTTP 502: Bad Gateway";
+                                return i18n_get(I18N_HTTP_502_BAD_GATEWAY);
                             case 503:
-                                return "HTTP 503: Service Unavailable";
+                                return i18n_get(I18N_HTTP_503_SERVICE_UNAVAILABLE);
                             case 504:
-                                return "HTTP 504: Gateway Timeout";
+                                return i18n_get(I18N_HTTP_504_GATEWAY_TIMEOUT);
                             case 505:
-                                return "HTTP 505: HTTP Version Not Specified";
+                                return i18n_get(I18N_HTTP_505_HTTP_VERSION_NOT_SPECIFIED);
                             case 506:
-                                return "HTTP 506: Variant Also Negotiates";
+                                return i18n_get(I18N_HTTP_506_VARIANT_ALSO_NEGOTIATES);
                             case 507:
-                                return "HTTP 507: Insufficient Storage";
+                                return i18n_get(I18N_HTTP_507_INSUFFICIENT_STORAGE);
                             case 508:
-                                return "HTTP 508: Loop Detected";
+                                return i18n_get(I18N_HTTP_508_LOOP_DETECTED);
                             case 510:
-                                return "HTTP 510: Not Extended";
+                                return i18n_get(I18N_HTTP_510_NOT_EXTENDED);
                             case 511:
-                                return "HTTP 511: Network Authentication Required";
+                                return i18n_get(I18N_HTTP_511_NETWORK_AUTHENTICATION_REQUIRED);
                             default:
-                                return "HTTP: Unknown Response Code";
+                                return i18n_get(I18N_HTTP_UNKNOWN_RESPONSE_CODE);
                         }
                     } else if(res >= R_APP_CURL_ERROR_BASE && res < R_APP_CURL_ERROR_END) {
                         const char* detail = http_curl_detail_message();
@@ -655,55 +656,55 @@ static const char* description_to_string(Result res) {
 
     switch(description) {
         case RD_SUCCESS:
-            return "Success";
+            return i18n_get(I18N_SUCCESS);
         case RD_TIMEOUT:
-            return "Timeout";
+            return i18n_get(I18N_TIMEOUT);
         case RD_OUT_OF_RANGE:
-            return "Out of range";
+            return i18n_get(I18N_OUT_OF_RANGE);
         case RD_ALREADY_EXISTS:
-            return "Already exists";
+            return i18n_get(I18N_ALREADY_EXISTS);
         case RD_CANCEL_REQUESTED:
-            return "Cancel requested";
+            return i18n_get(I18N_CANCEL_REQUESTED);
         case RD_NOT_FOUND:
-            return "Not found";
+            return i18n_get(I18N_NOT_FOUND);
         case RD_ALREADY_INITIALIZED:
-            return "Already initialized";
+            return i18n_get(I18N_ALREADY_INITIALIZED);
         case RD_NOT_INITIALIZED:
-            return "Not initialized";
+            return i18n_get(I18N_NOT_INITIALIZED);
         case RD_INVALID_HANDLE:
-            return "Invalid handle";
+            return i18n_get(I18N_INVALID_HANDLE);
         case RD_INVALID_POINTER:
-            return "Invalid pointer";
+            return i18n_get(I18N_INVALID_POINTER);
         case RD_INVALID_ADDRESS:
-            return "Invalid address";
+            return i18n_get(I18N_INVALID_ADDRESS);
         case RD_NOT_IMPLEMENTED:
-            return "Not implemented";
+            return i18n_get(I18N_NOT_IMPLEMENTED);
         case RD_OUT_OF_MEMORY:
-            return "Out of memory";
+            return i18n_get(I18N_OUT_OF_MEMORY);
         case RD_MISALIGNED_SIZE:
-            return "Misaligned size";
+            return i18n_get(I18N_MISALIGNED_SIZE);
         case RD_MISALIGNED_ADDRESS:
-            return "Misaligned address";
+            return i18n_get(I18N_MISALIGNED_ADDRESS);
         case RD_BUSY:
-            return "Busy";
+            return i18n_get(I18N_BUSY);
         case RD_NO_DATA:
-            return "No data";
+            return i18n_get(I18N_NO_DATA);
         case RD_INVALID_COMBINATION:
-            return "Invalid combination";
+            return i18n_get(I18N_INVALID_COMBINATION);
         case RD_INVALID_ENUM_VALUE:
-            return "Invalid enum value";
+            return i18n_get(I18N_INVALID_ENUM_VALUE);
         case RD_INVALID_SIZE:
-            return "Invalid size";
+            return i18n_get(I18N_INVALID_SIZE);
         case RD_ALREADY_DONE:
-            return "Already done";
+            return i18n_get(I18N_ALREADY_DONE);
         case RD_NOT_AUTHORIZED:
-            return "Not authorized";
+            return i18n_get(I18N_NOT_AUTHORIZED);
         case RD_TOO_LARGE:
-            return "Too large";
+            return i18n_get(I18N_TOO_LARGE);
         case RD_INVALID_SELECTION:
-            return "Invalid selection";
+            return i18n_get(I18N_INVALID_SELECTION);
         default:
-            return "<unknown>";
+            return i18n_get(I18N_UNKNOWN);
     }
 }
 
@@ -740,7 +741,7 @@ ui_view* error_display(void* data, void (*drawTop)(ui_view* view, void* data, fl
     vsnprintf(errorData->fullText, 4096, text, list);
     va_end(list);
 
-    return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
+    return prompt_display_notify(i18n_get(I18N_ERROR), errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
 }
 
 ui_view* error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
@@ -764,9 +765,9 @@ ui_view* error_display_res(void* data, void (*drawTop)(ui_view* view, void* data
     int module = R_MODULE(result);
     int description = R_DESCRIPTION(result);
 
-    snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDesc: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
+    snprintf(errorData->fullText, 4096, i18n_get(I18N_S_RESULT_CODE_0X_08LX_LEVEL_S_D_SUMMARY_S), textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
-    return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
+    return prompt_display_notify(i18n_get(I18N_ERROR), errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
 }
 
 ui_view* error_display_errno(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
@@ -789,7 +790,7 @@ ui_view* error_display_errno(void* data, void (*drawTop)(ui_view* view, void* da
         err = -err;
     }
 
-    snprintf(errorData->fullText, 4096, "%s\nI/O Error: %s (%d)", textBuf, strerror(err), err);
+    snprintf(errorData->fullText, 4096, i18n_get(I18N_IO_ERROR_S_D), textBuf, strerror(err), err);
 
-    return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
+    return prompt_display_notify(i18n_get(I18N_ERROR), errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
 }

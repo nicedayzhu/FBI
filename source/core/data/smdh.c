@@ -1,3 +1,4 @@
+#include "../i18n.h"
 #include <stdio.h>
 
 #include <3ds.h>
@@ -8,14 +9,14 @@
 #define SMDH_NUM_REGIONS 7
 #define SMDH_ALL_REGIONS 0x7F
 
-static const char* smdh_region_strings[SMDH_NUM_REGIONS] = {
-        "Japan",
-        "North America",
-        "Europe",
-        "Australia",
-        "China",
-        "Korea",
-        "Taiwan"
+static const i18n_message smdh_region_messages[SMDH_NUM_REGIONS] = {
+        I18N_JAPAN,
+        I18N_NORTH_AMERICA,
+        I18N_EUROPE,
+        I18N_AUSTRALIA,
+        I18N_CHINA,
+        I18N_KOREA,
+        I18N_TAIWAN
 };
 
 void smdh_region_to_string(char* out, u32 region, size_t size) {
@@ -24,9 +25,9 @@ void smdh_region_to_string(char* out, u32 region, size_t size) {
     }
 
     if(region == 0) {
-        snprintf(out, size, "Unknown");
+        snprintf(out, size, i18n_get(I18N_UNKNOWN_2));
     } else if((region & SMDH_ALL_REGIONS) == SMDH_ALL_REGIONS) {
-        snprintf(out, size, "Region Free");
+        snprintf(out, size, i18n_get(I18N_REGION_FREE));
     } else {
         size_t pos = 0;
 
@@ -36,7 +37,7 @@ void smdh_region_to_string(char* out, u32 region, size_t size) {
                     pos += snprintf(out + pos, size - pos, ", ");
                 }
 
-                pos += snprintf(out + pos, size - pos, smdh_region_strings[i]);
+                pos += snprintf(out + pos, size - pos, i18n_get(smdh_region_messages[i]));
             }
         }
     }

@@ -1,3 +1,4 @@
+#include "../i18n.h"
 #include <malloc.h>
 
 #include <3ds.h>
@@ -22,6 +23,10 @@ typedef struct {
     void (*update)(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched);
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected);
 } list_data;
+
+static const char* list_get_item_name(const list_item* item) {
+    return item->nameMessage != I18N_NONE ? i18n_get(item->nameMessage) : item->name;
+}
 
 static void list_validate(list_data* listData, float by1, float by2) {
     u32 size = linked_list_size(&listData->items);
@@ -98,7 +103,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
         bool scrolls = false;
         if(listData->selectedItem != NULL) {
             float itemWidth;
-            screen_get_string_size(&itemWidth, NULL, listData->selectedItem->name, 0.5f, 0.5f);
+            screen_get_string_size(&itemWidth, NULL, list_get_item_name(listData->selectedItem), 0.5f, 0.5f);
             if(itemWidth > bx2 - bx1) {
                 scrolls = true;
 
@@ -233,7 +238,7 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
                 x -= listData->selectionScroll;
             }
 
-            screen_draw_string(item->name, x, y, 0.5f, 0.5f, item->color, true);
+            screen_draw_string(list_get_item_name(item), x, y, 0.5f, 0.5f, item->color, true);
 
             if(item == listData->selectedItem) {
                 u32 selectionOverlayWidth = 0;
@@ -268,7 +273,7 @@ ui_view* list_display(const char* name, const char* info, void* data, void (*upd
                                                                       void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected)) {
     list_data* listData = (list_data*) calloc(1, sizeof(list_data));
     if(listData == NULL) {
-        error_display(NULL, NULL, "Failed to allocate list data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_LIST_DATA));
 
         return NULL;
     }

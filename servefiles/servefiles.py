@@ -9,6 +9,8 @@ import threading
 import time
 import urllib
 
+from i18n import tr
+
 try:
     from SimpleHTTPServer import SimpleHTTPRequestHandler
     from SocketServer import TCPServer
@@ -22,37 +24,39 @@ except ImportError:
 interactive = False
     
 if len(sys.argv) <= 2:
-    # If there aren't enough variables, use interactive mode
+    # Enter interactive mode when arguments are omitted.
     if len(sys.argv) == 2:
         if sys.argv[1].lower() in ('--help', '-help', 'help', 'h', '-h', '--h'):
-            print('Usage: ' + sys.argv[0] + ' <target ip> <file / directory> [host ip] [host port]')
+            print(tr('usage_files', sys.argv[0]))
             sys.exit(1)
     
     interactive = True
 
 elif len(sys.argv) < 3 or len(sys.argv) > 6:
-    print('Usage: ' + sys.argv[0] + ' <target ip> <file / directory> [host ip] [host port]')
+    print(tr('usage_files', sys.argv[0]))
     sys.exit(1)
 
 accepted_extension = ('.cia', '.tik', '.cetk', '.3dsx')
-hostPort = 8080 # Default value
+hostPort = 8080
 
 if interactive:
-    target_ip = input("The IP of your 3DS: ")
-    target_path = input("The file you want to send (.cia, .tik, .cetk, or .3dsx): ")
+    target_ip = input(tr('prompt_target_ip'))
+    target_path = input(tr('prompt_path'))
     
-    hostIp = input("Host IP (or press Enter to have the script detect host IP):")
+    hostIp = input(tr('prompt_host_ip'))
     if hostIp == '':
-        print('Detecting host IP...') 
+        print(tr('detecting_host_ip'))
         hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
     else:
-        hostPort = input("Host port (or press Enter to keep default, 8080):")
+        hostPort = input(tr('prompt_host_port'))
         if hostPort == '':
-            hostPort = 8080 # Default
+            hostPort = 8080
+        else:
+            hostPort = int(hostPort)
     
 
 else:
-    # (if the script is being run using a full python path; ex: "path/to/python script_name.py foo foo..")
+    # Launched with a full Python path.
     if sys.argv[1] == os.path.basename(__file__):
         target_ip = sys.argv[2]
         target_path = sys.argv[3]
@@ -62,10 +66,10 @@ else:
             if len(sys.argv) == 6:
                 hostPort = int(sys.argv[5])
         else:
-            print('Detecting host IP...')
+            print(tr('detecting_host_ip'))
             hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
                 
-    # (if the script is being run using just the script name and default executable for python scripts; ex: "script_name.py foo foo..")
+    # Launched directly with the system Python.
     else:
         target_ip = sys.argv[1]
         target_path = sys.argv[2]
@@ -75,42 +79,42 @@ else:
             if len(sys.argv) == 5:
                 hostPort = int(sys.argv[4])
         else:
-            print('Detecting host IP...')
+            print(tr('detecting_host_ip'))
             hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 
 target_path = target_path.strip()
 if not os.path.exists(target_path):
-    print(target_path + ': No such file or directory.')
+    print(tr('path_missing', target_path))
     sys.exit(1)
 
 
-print('Preparing data...')
+print(tr('preparing'))
 baseUrl = hostIp + ':' + str(hostPort) + '/'
 
 if os.path.isfile(target_path):
     if target_path.endswith(accepted_extension):
         file_list_payload = baseUrl + quote(os.path.basename(target_path))
-        directory = os.path.dirname(target_path)  # get file directory
+        directory = os.path.dirname(target_path)
     else:
-        print('Unsupported file extension. Supported extensions are: ' + accepted_extension)
+        print(tr('unsupported_extension', ', '.join(accepted_extension)))
         sys.exit(1)
 
 else:
-    directory = target_path  # it's a directory
-    file_list_payload = ''  # init the payload before adding lines
+    directory = target_path
+    file_list_payload = ''
     for file in [file for file in next(os.walk(target_path))[2] if file.endswith(accepted_extension)]:
         file_list_payload += baseUrl + quote(file) + '\n'
 
 if len(file_list_payload) == 0:
-    print('No files to serve.')
+    print(tr('no_files'))
     sys.exit(1)
 
 file_list_payloadBytes = file_list_payload.encode('ascii')
 
-if directory and directory != '.':  # doesn't need to move if it's already the current working directory
-    os.chdir(directory)  # set working directory to the right folder to be able to serve files
+if directory and directory != '.':
+    os.chdir(directory)
 
-print('\nURLs:')
+print('\n' + tr('url_list'))
 print(file_list_payload + '\n')
 
 class MyServer(TCPServer):
@@ -119,13 +123,13 @@ class MyServer(TCPServer):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(self.server_address)
 
-print('Opening HTTP server on port ' + str(hostPort))
+print(tr('starting_http', hostPort))
 server = MyServer(('', hostPort), SimpleHTTPRequestHandler)
 thread = threading.Thread(target=server.serve_forever)
 thread.start()
 
 try:
-    print('Sending URL(s) to ' + target_ip + ' on port 5000...')
+    print(tr('sending_urls', target_ip))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((target_ip, 5000))
     sock.sendall(struct.pack('!L', len(file_list_payloadBytes)) + file_list_payloadBytes)
@@ -133,9 +137,9 @@ try:
         time.sleep(0.05)
     sock.close()
 except Exception as e:
-    print('An error occurred: ' + str(e))
+    print(tr('error', str(e)))
     server.shutdown()
     sys.exit(1)
 
-print('Shutting down HTTP server...')
+print(tr('stopping_http'))
 server.shutdown()

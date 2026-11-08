@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 
@@ -97,7 +98,7 @@ static Result action_export_twl_save_restore(void* data, u32 index) {
 }
 
 static bool action_export_twl_save_error(void* data, u32 index, Result res, ui_view** errorView) {
-    *errorView = error_display_res(((export_twl_save_data*) data)->title, task_draw_title_info, res, "Failed to export save.");
+    *errorView = error_display_res(((export_twl_save_data*) data)->title, task_draw_title_info, res, i18n_get(I18N_FAILED_TO_EXPORT_SAVE));
     return true;
 }
 
@@ -109,7 +110,7 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(exportData->exportInfo.result)) {
-            prompt_display_notify("Success", "Save exported.", COLOR_TEXT, exportData->title, task_draw_title_info, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_SAVE_EXPORTED), COLOR_TEXT, exportData->title, task_draw_title_info, NULL);
         }
 
         free(data);
@@ -122,7 +123,7 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
     }
 
     *progress = exportData->exportInfo.currTotal != 0 ? (float) ((double) exportData->exportInfo.currProcessed / (double) exportData->exportInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s",
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_N_2F_S_2F_S_2F_S_S_ETA_S),
              ui_get_display_size(exportData->exportInfo.currProcessed),
              ui_get_display_size_units(exportData->exportInfo.currProcessed),
              ui_get_display_size(exportData->exportInfo.currTotal),
@@ -138,9 +139,9 @@ static void action_export_twl_save_onresponse(ui_view* view, void* data, u32 res
 
         Result res = task_data_op(&exportData->exportInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Exporting Save", "Press B to cancel.", true, data, action_export_twl_save_update, action_export_twl_save_draw_top);
+            info_display(i18n_get(I18N_EXPORTING_SAVE), i18n_get(I18N_PRESS_B_TO_CANCEL), true, data, action_export_twl_save_update, action_export_twl_save_draw_top);
         } else {
-            error_display_res(exportData->title, task_draw_title_info, res, "Failed to initiate save export.");
+            error_display_res(exportData->title, task_draw_title_info, res, i18n_get(I18N_FAILED_TO_INITIATE_SAVE_EXPORT));
             free(data);
         }
     } else {
@@ -151,7 +152,7 @@ static void action_export_twl_save_onresponse(ui_view* view, void* data, u32 res
 void action_export_twl_save(linked_list* items, list_item* selected) {
     export_twl_save_data* data = (export_twl_save_data*) calloc(1, sizeof(export_twl_save_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate export TWL save data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_EXPORT_TWL_SAVE_DATA));
 
         return;
     }
@@ -186,5 +187,5 @@ void action_export_twl_save(linked_list* items, list_item* selected) {
 
     data->exportInfo.finished = true;
 
-    prompt_display_yes_no("Confirmation", "Export the save of the selected title?", COLOR_TEXT, data, action_export_twl_save_draw_top, action_export_twl_save_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_EXPORT_THE_SAVE_OF_THE_SELECTED_TITLE), COLOR_TEXT, data, action_export_twl_save_draw_top, action_export_twl_save_onresponse);
 }

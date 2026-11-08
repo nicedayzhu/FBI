@@ -1,3 +1,4 @@
+#include "../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 
@@ -9,8 +10,8 @@
 #include "task/uitask.h"
 #include "../core/core.h"
 
-static list_item browse_save_data = {"Browse Save Data", COLOR_TEXT, action_browse_system_save_data};
-static list_item delete_save_data = {"Delete Save Data", COLOR_TEXT, action_delete_system_save_data};
+static list_item browse_save_data = LIST_ITEM_I18N(I18N_BROWSE_SAVE_DATA, COLOR_TEXT, action_browse_system_save_data);
+static list_item delete_save_data = LIST_ITEM_I18N(I18N_DELETE_SAVE_DATA, COLOR_TEXT, action_delete_system_save_data);
 
 typedef struct {
     populate_system_save_data_data populateData;
@@ -61,7 +62,7 @@ static void systemsavedata_action_update(ui_view* view, void* data, linked_list*
 static void systemsavedata_action_open(linked_list* items, list_item* selected) {
     systemsavedata_action_data* data = (systemsavedata_action_data*) calloc(1, sizeof(systemsavedata_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate system save data action data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_SYSTEM_SAVE_DATA_ACTION_DATA));
 
         return;
     }
@@ -69,7 +70,7 @@ static void systemsavedata_action_open(linked_list* items, list_item* selected) 
     data->items = items;
     data->selected = selected;
 
-    list_display("System Save Data Action", "A: Select, B: Return", data, systemsavedata_action_update, systemsavedata_action_draw_top);
+    list_display(i18n_get(I18N_SYSTEM_SAVE_DATA_ACTION), i18n_get(I18N_A_SELECT_B_RETURN), data, systemsavedata_action_update, systemsavedata_action_draw_top);
 }
 
 static void systemsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -109,14 +110,14 @@ static void systemsavedata_update(ui_view* view, void* data, linked_list* items,
         listData->populateData.items = items;
         Result res = task_populate_system_save_data(&listData->populateData);
         if(R_FAILED(res)) {
-            error_display_res(NULL, NULL, res, "Failed to initiate system save data list population.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_SYSTEM_SAVE_DATA_LIST_POPULATION));
         }
 
         listData->populated = true;
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate system save data list.");
+        error_display_res(NULL, NULL, listData->populateData.result, i18n_get(I18N_FAILED_TO_POPULATE_SYSTEM_SAVE_DATA_LIST));
 
         listData->populateData.result = 0;
     }
@@ -130,12 +131,12 @@ static void systemsavedata_update(ui_view* view, void* data, linked_list* items,
 void systemsavedata_open() {
     systemsavedata_data* data = (systemsavedata_data*) calloc(1, sizeof(systemsavedata_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate system save data data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_SYSTEM_SAVE_DATA_DATA));
 
         return;
     }
 
     data->populateData.finished = true;
 
-    list_display("System Save Data", "A: Select, B: Return, X: Refresh", data, systemsavedata_update, systemsavedata_draw_top);
+    list_display(i18n_get(I18N_SYSTEM_SAVE_DATA), i18n_get(I18N_A_SELECT_B_RETURN_X_REFRESH), data, systemsavedata_update, systemsavedata_draw_top);
 }

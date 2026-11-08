@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -129,7 +130,7 @@ static Result action_install_tickets_restore(void* data, u32 index) {
 }
 
 static bool action_install_tickets_error(void* data, u32 index, Result res, ui_view** errorView) {
-    *errorView = error_display_res(data, action_install_tickets_draw_top, res, "Failed to install ticket.");
+    *errorView = error_display_res(data, action_install_tickets_draw_top, res, i18n_get(I18N_FAILED_TO_INSTALL_TICKET));
     return true;
 }
 
@@ -158,7 +159,7 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display_notify("Success", "Install finished.", COLOR_TEXT, NULL, NULL, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_INSTALL_FINISHED_2), COLOR_TEXT, NULL, NULL, NULL);
         }
 
         action_install_tickets_free_data(installData);
@@ -171,7 +172,7 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
     }
 
     *progress = installData->installInfo.currTotal != 0 ? (float) ((double) installData->installInfo.currProcessed / (double) installData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", installData->installInfo.processed, installData->installInfo.total,
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_LU_LU_2F_S_2F_S_2F_S_S_ETA), installData->installInfo.processed, installData->installInfo.total,
              ui_get_display_size(installData->installInfo.currProcessed),
              ui_get_display_size_units(installData->installInfo.currProcessed),
              ui_get_display_size(installData->installInfo.currTotal),
@@ -187,9 +188,9 @@ static void action_install_tickets_onresponse(ui_view* view, void* data, u32 res
     if(response == PROMPT_YES) {
         Result res = task_data_op(&installData->installInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Installing ticket(s)", "Press B to cancel.", true, data, action_install_tickets_update, action_install_tickets_draw_top);
+            info_display(i18n_get(I18N_INSTALLING_TICKET_S), i18n_get(I18N_PRESS_B_TO_CANCEL), true, data, action_install_tickets_update, action_install_tickets_draw_top);
         } else {
-            error_display_res(NULL, NULL, res, "Failed to initiate ticket installation.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_TICKET_INSTALLATION));
 
             action_install_tickets_free_data(installData);
         }
@@ -222,9 +223,9 @@ static void action_install_tickets_loading_update(ui_view* view, void* data, flo
             loadingData->installData->installInfo.total = linked_list_size(&loadingData->installData->contents);
             loadingData->installData->installInfo.processed = loadingData->installData->installInfo.total;
 
-            prompt_display_yes_no("Confirmation", loadingData->message, COLOR_TEXT, loadingData->installData, action_install_tickets_draw_top, action_install_tickets_onresponse);
+            prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), loadingData->message, COLOR_TEXT, loadingData->installData, action_install_tickets_draw_top, action_install_tickets_onresponse);
         } else {
-            error_display_res(NULL, NULL, loadingData->popData.result, "Failed to populate ticket list.");
+            error_display_res(NULL, NULL, loadingData->popData.result, i18n_get(I18N_FAILED_TO_POPULATE_TICKET_LIST));
 
             action_install_tickets_free_data(loadingData->installData);
         }
@@ -237,13 +238,13 @@ static void action_install_tickets_loading_update(ui_view* view, void* data, flo
         svcSignalEvent(loadingData->popData.cancelEvent);
     }
 
-    snprintf(text, PROGRESS_TEXT_MAX, "Fetching ticket list...");
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_FETCHING_TICKET_LIST));
 }
 
 static void action_install_tickets_internal(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData, const char* message, bool delete) {
     install_tickets_data* data = (install_tickets_data*) calloc(1, sizeof(install_tickets_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate install tickets data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_INSTALL_TICKETS_DATA));
 
         return;
     }
@@ -253,7 +254,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     file_info* targetInfo = (file_info*) selected->data;
     Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, true);
     if(R_FAILED(targetCreateRes)) {
-        error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
+        error_display_res(NULL, NULL, targetCreateRes, i18n_get(I18N_FAILED_TO_CREATE_TARGET_FILE_ITEM));
 
         action_install_tickets_free_data(data);
         return;
@@ -293,7 +294,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 
     install_tickets_loading_data* loadingData = (install_tickets_loading_data*) calloc(1, sizeof(install_tickets_loading_data));
     if(loadingData == NULL) {
-        error_display(NULL, NULL, "Failed to allocate loading data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_LOADING_DATA));
 
         action_install_tickets_free_data(data);
         return;
@@ -316,28 +317,28 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 
     Result listRes = task_populate_files(&loadingData->popData);
     if(R_FAILED(listRes)) {
-        error_display_res(NULL, NULL, listRes, "Failed to initiate ticket list population.");
+        error_display_res(NULL, NULL, listRes, i18n_get(I18N_FAILED_TO_INITIATE_TICKET_LIST_POPULATION));
 
         free(loadingData);
         action_install_tickets_free_data(data);
         return;
     }
 
-    info_display("Loading", "Press B to cancel.", false, loadingData, action_install_tickets_loading_update, action_install_tickets_loading_draw_top);
+    info_display(i18n_get(I18N_LOADING), i18n_get(I18N_PRESS_B_TO_CANCEL_2), false, loadingData, action_install_tickets_loading_update, action_install_tickets_loading_draw_top);
 }
 
 void action_install_ticket(linked_list* items, list_item* selected) {
-    action_install_tickets_internal(items, selected, NULL, NULL, "Install the selected ticket?", false);
+    action_install_tickets_internal(items, selected, NULL, NULL, i18n_get(I18N_INSTALL_THE_SELECTED_TICKET), false);
 }
 
 void action_install_ticket_delete(linked_list* items, list_item* selected) {
-    action_install_tickets_internal(items, selected, NULL, NULL, "Install and delete the selected ticket?", true);
+    action_install_tickets_internal(items, selected, NULL, NULL, i18n_get(I18N_INSTALL_AND_DELETE_THE_SELECTED_TICKET), true);
 }
 
 void action_install_tickets(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData) {
-    action_install_tickets_internal(items, selected, filter, filterData, "Install all tickets in the current directory?", false);
+    action_install_tickets_internal(items, selected, filter, filterData, i18n_get(I18N_INSTALL_ALL_TICKETS_IN_THE_CURRENT_DIRECTORY), false);
 }
 
 void action_install_tickets_delete(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData) {
-    action_install_tickets_internal(items, selected, filter, filterData, "Install and delete all tickets in the current directory?", true);
+    action_install_tickets_internal(items, selected, filter, filterData, i18n_get(I18N_INSTALL_AND_DELETE_ALL_TICKETS_IN_THE_CURRENT_DIRECTORY), true);
 }

@@ -6,6 +6,7 @@
 #include "../core/clipboard.h"
 #include "../core/error.h"
 #include "../core/fs.h"
+#include "../core/i18n.h"
 #include "../core/screen.h"
 #include "../core/task/task.h"
 #include "../core/ui/ui.h"
@@ -149,6 +150,7 @@ void init() {
 
     AM_InitializeExternalTitleDatabase(false);
 
+    i18n_init();
     screen_init();
     ui_init();
     task_init();

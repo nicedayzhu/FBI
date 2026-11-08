@@ -58,6 +58,14 @@ HOME Menu assets with `scripts/recolor-brand-assets.ps1`, recolor the runtime
 textures with `scripts/recolor-runtime-theme.ps1`, and use
 [txobtool](https://github.com/dnasdw/txobtool).
 
+The same build includes English and Simplified Chinese. It follows the 3DS
+system language automatically (Chinese selects zh-CN; all other system
+languages fall back to English), and **Language** on the main menu provides a
+persistent manual override. Localization catalogs are maintained separately in
+`source/core/i18n/lang_en.c` and `source/core/i18n/lang_zh_cn.c`. See
+[the runtime localization notes](docs/LOCALIZATION_ZH_CN.md) for maintenance
+and validation details.
+
 The discovery wire format is documented in
 [docs/CIA_BRIDGE_DISCOVERY.md](docs/CIA_BRIDGE_DISCOVERY.md).
 Release history is maintained in [CHANGELOG.md](CHANGELOG.md), not in this

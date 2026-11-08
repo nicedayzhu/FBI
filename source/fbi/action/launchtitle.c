@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <3ds.h>
 
 #include "action.h"
@@ -21,16 +22,16 @@ static void action_launch_title_update(ui_view* view, void* data, float* progres
         ui_pop();
         info_destroy(view);
 
-        error_display_res(info, task_draw_title_info, res, "Failed to launch title.");
+        error_display_res(info, task_draw_title_info, res, i18n_get(I18N_FAILED_TO_LAUNCH_TITLE));
     }
 }
 
 static void action_launch_title_onresponse(ui_view* view, void* data, u32 response) {
     if(response == PROMPT_YES) {
-        info_display("Launching Title", "", false, data, action_launch_title_update, task_draw_title_info);
+        info_display(i18n_get(I18N_LAUNCHING_TITLE), "", false, data, action_launch_title_update, task_draw_title_info);
     }
 }
 
 void action_launch_title(linked_list* items, list_item* selected) {
-    prompt_display_yes_no("Confirmation", "Launch the selected title?", COLOR_TEXT, selected->data, task_draw_title_info, action_launch_title_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_LAUNCH_THE_SELECTED_TITLE), COLOR_TEXT, selected->data, task_draw_title_info, action_launch_title_onresponse);
 }

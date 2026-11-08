@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.7.5
+
+- Replaced the Chinese-only build with one universal English and Simplified
+  Chinese binary. The default follows the 3DS system language, while a new
+  **Language** menu provides an immediate, persistent manual override.
+- Split translations into independently maintained `lang_en.c/.h` and
+  `lang_zh_cn.c/.h` catalogs, with automated catalog parity, format-string,
+  UTF-8, and BCFNT glyph-coverage checks.
+- Localized the bundled `servefiles` and `sendurls` tools according to the host
+  locale, with `FBI_LANGUAGE` available as an explicit override.
+- Pointed the updater at this fork's releases and retained one language-neutral
+  asset name so every installation receives the same universal build.
+- Added a project-local ZIP fallback for Windows/MSYS2 systems without `zip`,
+  and excluded ELF and other build intermediates from release archives.
+- Kept the product name `FBI CIA Bridge`, the original blue startup animation,
+  and a neutral English HOME Menu description.
+
 ## 2.7.4
 
 - Added raw-only `CBPATCH1` LayeredFS patch reception on TCP 5002, integrated

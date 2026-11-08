@@ -1,3 +1,4 @@
+#include "../i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -75,12 +76,12 @@ static void prompt_draw_top(ui_view* view, void* data, float x1, float y1, float
 static const char* button_strings[32] = {
         "A",
         "B",
-        "Select",
-        "Start",
-        "D-Pad Right",
-        "D-Pad Left",
-        "D-Pad Up",
-        "D-Pad Down",
+        "SELECT",
+        "START",
+        NULL,
+        NULL,
+        NULL,
+        NULL,
         "R",
         "L",
         "X",
@@ -97,19 +98,34 @@ static const char* button_strings[32] = {
         "",
         "",
         "",
-        "C-Stick Right",
-        "C-Stick Left",
-        "C-Stick Up",
-        "C-Stick Down",
-        "Circle Pad Right",
-        "Circle Pad Left",
-        "Circle Pad Up",
-        "Circle Pad Down"
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+};
+
+static const i18n_message button_messages[32] = {
+        [4] = I18N_D_PAD_RIGHT,
+        [5] = I18N_D_PAD_LEFT,
+        [6] = I18N_D_PAD_UP,
+        [7] = I18N_D_PAD_DOWN,
+        [24] = I18N_C_STICK_RIGHT,
+        [25] = I18N_C_STICK_LEFT,
+        [26] = I18N_C_STICK_UP,
+        [27] = I18N_C_STICK_DOWN,
+        [28] = I18N_CIRCLE_PAD_RIGHT,
+        [29] = I18N_CIRCLE_PAD_LEFT,
+        [30] = I18N_CIRCLE_PAD_UP,
+        [31] = I18N_CIRCLE_PAD_DOWN,
 };
 
 static void prompt_button_to_string(char* out, size_t size, u32 button) {
     if(button == PROMPT_BUTTON_ANY) {
-        snprintf(out, size, "Any Button");
+        snprintf(out, size, i18n_get(I18N_ANY_BUTTON));
         return;
     }
 
@@ -120,7 +136,8 @@ static void prompt_button_to_string(char* out, size_t size, u32 button) {
                 pos += snprintf(out + pos, size - pos, "/");
             }
 
-            pos += snprintf(out + pos, size - pos, button_strings[bit]);
+            const char* buttonString = button_messages[bit] != I18N_NONE ? i18n_get(button_messages[bit]) : button_strings[bit];
+            pos += snprintf(out + pos, size - pos, buttonString);
         }
     }
 }
@@ -158,7 +175,7 @@ ui_view* prompt_display_multi_choice(const char* name, const char* text, u32 col
                                                                                                                                                           void (*onResponse)(ui_view* view, void* data, u32 response)) {
     prompt_data* promptData = (prompt_data*) calloc(1, sizeof(prompt_data));
     if(promptData == NULL) {
-        error_display(NULL, NULL, "Failed to allocate prompt data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_PROMPT_DATA));
 
         return NULL;
     }
@@ -190,14 +207,14 @@ ui_view* prompt_display_multi_choice(const char* name, const char* text, u32 col
 
 ui_view* prompt_display_notify(const char* name, const char* text, u32 color, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
                                                                                           void (*onResponse)(ui_view* view, void* data, u32 response)) {
-    static const char* options[1] = {"OK"};
+    const char* options[1] = {i18n_get(I18N_OK)};
     static u32 optionButtons[1] = {PROMPT_BUTTON_ANY};
     return prompt_display_multi_choice(name, text, color, options, optionButtons, 1, data, drawTop, onResponse);
 }
 
 ui_view* prompt_display_yes_no(const char* name, const char* text, u32 color, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
                                                                                           void (*onResponse)(ui_view* view, void* data, u32 response)) {
-    static const char* options[2] = {"Yes", "No"};
+    const char* options[2] = {i18n_get(I18N_YES), i18n_get(I18N_NO)};
     static u32 optionButtons[2] = {KEY_A, KEY_B};
     return prompt_display_multi_choice(name, text, color, options, optionButtons, 2, data, drawTop, onResponse);
 }

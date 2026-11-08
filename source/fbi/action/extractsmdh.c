@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -61,18 +62,18 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
     info_destroy(view);
 
     if(R_SUCCEEDED(res)) {
-        prompt_display_notify("Success", "SMDH extracted.", COLOR_TEXT, info, task_draw_title_info, NULL);
+        prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_SMDH_EXTRACTED), COLOR_TEXT, info, task_draw_title_info, NULL);
     } else {
-        error_display_res(info, task_draw_title_info, res, "Failed to extract SMDH.");
+        error_display_res(info, task_draw_title_info, res, i18n_get(I18N_FAILED_TO_EXTRACT_SMDH));
     }
 }
 
 static void action_extract_smdh_onresponse(ui_view* view, void* data, u32 response) {
     if(response == PROMPT_YES) {
-        info_display("Extracting SMDH", "", false, data, action_extract_smdh_update, task_draw_title_info);
+        info_display(i18n_get(I18N_EXTRACTING_SMDH), "", false, data, action_extract_smdh_update, task_draw_title_info);
     }
 }
 
 void action_extract_smdh(linked_list* items, list_item* selected) {
-    prompt_display_yes_no("Confirmation", "Extract the SMDH of the selected title?", COLOR_TEXT, selected->data, task_draw_title_info, action_extract_smdh_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_EXTRACT_THE_SMDH_OF_THE_SELECTED_TITLE), COLOR_TEXT, selected->data, task_draw_title_info, action_extract_smdh_onresponse);
 }

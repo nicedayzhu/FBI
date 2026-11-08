@@ -8,6 +8,7 @@
 #include "error.h"
 #include "fs.h"
 #include "http.h"
+#include "i18n.h"
 #include "linkedlist.h"
 #include "screen.h"
 #include "spi.h"

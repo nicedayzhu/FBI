@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 
@@ -43,9 +44,9 @@ static void action_new_folder_onresponse(ui_view* view, void* data, SwkbdButton 
                 linked_list_sort(newFolderData->items, NULL, task_compare_files);
             }
 
-            prompt_display_notify("Success", "Folder created.", COLOR_TEXT, NULL, NULL, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_FOLDER_CREATED), COLOR_TEXT, NULL, NULL, NULL);
         } else {
-            error_display_res(NULL, NULL, res, "Failed to create folder.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_CREATE_FOLDER));
         }
     }
 
@@ -55,7 +56,7 @@ static void action_new_folder_onresponse(ui_view* view, void* data, SwkbdButton 
 void action_new_folder(linked_list* items, list_item* selected) {
     new_folder_data* data = (new_folder_data*) calloc(1, sizeof(new_folder_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate new folder data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_NEW_FOLDER_DATA));
 
         return;
     }
@@ -63,5 +64,5 @@ void action_new_folder(linked_list* items, list_item* selected) {
     data->items = items;
     data->selected = selected;
 
-    kbd_display("Enter folder name", "", SWKBD_TYPE_NORMAL, 0, SWKBD_NOTEMPTY_NOTBLANK, FILE_NAME_MAX, data, action_new_folder_onresponse);
+    kbd_display(i18n_get(I18N_ENTER_FOLDER_NAME), "", SWKBD_TYPE_NORMAL, 0, SWKBD_NOTEMPTY_NOTBLANK, FILE_NAME_MAX, data, action_new_folder_onresponse);
 }

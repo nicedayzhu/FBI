@@ -1,3 +1,4 @@
+#include "../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,9 +11,9 @@
 #include "task/uitask.h"
 #include "../core/core.h"
 
-static list_item browse_user_save_data = {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data};
-static list_item browse_spotpass_save_data = {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data};
-static list_item delete_save_data = {"Delete Save Data", COLOR_TEXT, action_delete_ext_save_data};
+static list_item browse_user_save_data = LIST_ITEM_I18N(I18N_BROWSE_USER_SAVE_DATA, COLOR_TEXT, action_browse_user_ext_save_data);
+static list_item browse_spotpass_save_data = LIST_ITEM_I18N(I18N_BROWSE_SPOTPASS_SAVE_DATA, COLOR_TEXT, action_browse_boss_ext_save_data);
+static list_item delete_save_data = LIST_ITEM_I18N(I18N_DELETE_SAVE_DATA, COLOR_TEXT, action_delete_ext_save_data);
 
 typedef struct {
     populate_ext_save_data_data populateData;
@@ -69,7 +70,7 @@ static void extsavedata_action_update(ui_view* view, void* data, linked_list* it
 static void extsavedata_action_open(linked_list* items, list_item* selected) {
     extsavedata_action_data* data = (extsavedata_action_data*) calloc(1, sizeof(extsavedata_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate ext save data action data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_EXT_SAVE_DATA_ACTION_DATA));
 
         return;
     }
@@ -77,7 +78,7 @@ static void extsavedata_action_open(linked_list* items, list_item* selected) {
     data->items = items;
     data->selected = selected;
 
-    list_display("Ext Save Data Action", "A: Select, B: Return", data, extsavedata_action_update, extsavedata_action_draw_top);
+    list_display(i18n_get(I18N_EXT_SAVE_DATA_ACTION), i18n_get(I18N_A_SELECT_B_RETURN), data, extsavedata_action_update, extsavedata_action_draw_top);
 }
 
 static void extsavedata_options_add_entry(linked_list* items, const char* name, bool* val) {
@@ -135,15 +136,15 @@ static void extsavedata_options_update(ui_view* view, void* data, linked_list* i
     }
 
     if(linked_list_size(items) == 0) {
-        extsavedata_options_add_entry(items, "Show SD", &listData->showSD);
-        extsavedata_options_add_entry(items, "Show NAND", &listData->showNAND);
-        extsavedata_options_add_entry(items, "Sort by ID", &listData->sortById);
-        extsavedata_options_add_entry(items, "Sort by name", &listData->sortByName);
+        extsavedata_options_add_entry(items, i18n_get(I18N_SHOW_SD_2), &listData->showSD);
+        extsavedata_options_add_entry(items, i18n_get(I18N_SHOW_NAND_2), &listData->showNAND);
+        extsavedata_options_add_entry(items, i18n_get(I18N_SORT_BY_ID), &listData->sortById);
+        extsavedata_options_add_entry(items, i18n_get(I18N_SORT_BY_NAME), &listData->sortByName);
     }
 }
 
 static void extsavedata_options_open(extsavedata_data* data) {
-    list_display("Options", "A: Toggle, B: Return", data, extsavedata_options_update, NULL);
+    list_display(i18n_get(I18N_OPTIONS), i18n_get(I18N_A_TOGGLE_B_RETURN), data, extsavedata_options_update, NULL);
 }
 
 static void extsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -188,14 +189,14 @@ static void extsavedata_update(ui_view* view, void* data, linked_list* items, li
         listData->populateData.items = items;
         Result res = task_populate_ext_save_data(&listData->populateData);
         if(R_FAILED(res)) {
-            error_display_res(NULL, NULL, res, "Failed to initiate ext save data list population.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_EXT_SAVE_DATA_LIST_POPULATION));
         }
 
         listData->populated = true;
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate ext save data list.");
+        error_display_res(NULL, NULL, listData->populateData.result, i18n_get(I18N_FAILED_TO_POPULATE_EXT_SAVE_DATA_LIST));
 
         listData->populateData.result = 0;
     }
@@ -255,7 +256,7 @@ static int extsavedata_compare(void* data, const void* p1, const void* p2) {
 void extsavedata_open() {
     extsavedata_data* data = (extsavedata_data*) calloc(1, sizeof(extsavedata_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate ext save data data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_EXT_SAVE_DATA_DATA));
 
         return;
     }
@@ -271,5 +272,5 @@ void extsavedata_open() {
     data->sortById = false;
     data->sortByName = true;
 
-    list_display("Ext Save Data", "A: Select, B: Return, X: Refresh, Select: Options", data, extsavedata_update, extsavedata_draw_top);
+    list_display(i18n_get(I18N_EXT_SAVE_DATA), i18n_get(I18N_A_SELECT_B_RETURN_X_REFRESH_SELECT_OPTIONS), data, extsavedata_update, extsavedata_draw_top);
 }

@@ -1,3 +1,4 @@
+#include "../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -80,7 +81,7 @@ static Result dumpnand_restore(void* data, u32 index) {
 }
 
 static bool dumpnand_error(void* data, u32 index, Result res, ui_view** errorView) {
-    *errorView = error_display_res(NULL, NULL, res, "Failed to dump NAND.");
+    *errorView = error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_DUMP_NAND));
     return true;
 }
 
@@ -92,7 +93,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
         info_destroy(view);
 
         if(R_SUCCEEDED(dumpData->result)) {
-            prompt_display_notify("Success", "NAND dumped.", COLOR_TEXT, NULL, NULL, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_NAND_DUMPED), COLOR_TEXT, NULL, NULL, NULL);
         }
 
         free(dumpData);
@@ -105,7 +106,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     }
 
     *progress = dumpData->currTotal != 0 ? (float) ((double) dumpData->currProcessed / (double) dumpData->currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s",
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_N_2F_S_2F_S_2F_S_S_ETA_S),
              ui_get_display_size(dumpData->currProcessed), ui_get_display_size_units(dumpData->currProcessed),
              ui_get_display_size(dumpData->currTotal), ui_get_display_size_units(dumpData->currTotal),
              ui_get_display_size(dumpData->bytesPerSecond), ui_get_display_size_units(dumpData->bytesPerSecond),
@@ -118,9 +119,9 @@ static void dumpnand_onresponse(ui_view* view, void* data, u32 response) {
 
         Result res = task_data_op(dumpData);
         if(R_SUCCEEDED(res)) {
-            info_display("Dumping NAND", "Press B to cancel.", true, data, dumpnand_update, NULL);
+            info_display(i18n_get(I18N_DUMPING_NAND), i18n_get(I18N_PRESS_B_TO_CANCEL), true, data, dumpnand_update, NULL);
         } else {
-            error_display_res(NULL, NULL, res, "Failed to initiate NAND dump.");
+            error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_NAND_DUMP));
             free(data);
         }
     } else {
@@ -131,7 +132,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, u32 response) {
 void dumpnand_open() {
     data_op_data* data = (data_op_data*) calloc(1, sizeof(data_op_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate dump NAND data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_DUMP_NAND_DATA));
 
         return;
     }
@@ -164,5 +165,5 @@ void dumpnand_open() {
 
     data->finished = true;
 
-    prompt_display_yes_no("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, data, NULL, dumpnand_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_DUMP_RAW_NAND_IMAGE_TO_THE_SD_CARD), COLOR_TEXT, data, NULL, dumpnand_onresponse);
 }

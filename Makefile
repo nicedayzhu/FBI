@@ -1,7 +1,7 @@
 TARGET := 3DS
 
 NAME := FBI-cia-bridge
-TITLE := FBI-curl
+TITLE := FBI CIA Bridge
 
 BUILD_DIR := build
 OUTPUT_DIR := output
@@ -14,13 +14,17 @@ LIBRARIES += curl mbedtls mbedx509 mbedcrypto jansson z citro3d ctru
 
 EXTRA_OUTPUT_FILES := servefiles
 
+# Prefer the project-local ZIP compatibility wrapper. It delegates to the
+# native zip utility when available and falls back to PowerShell on Windows.
+export PATH := $(CURDIR)/scripts:$(PATH)
+
 BUILD_FLAGS := -Wno-format-truncation
 
 VERSION_MAJOR := 2
 VERSION_MINOR := 7
-VERSION_MICRO := 4
+VERSION_MICRO := 5
 
-DESCRIPTION := CIA Bridge discovery and buffered pipelined installs.
+DESCRIPTION := CIA Bridge discovery and fast pipelined installation.
 AUTHOR := Steveice10
 
 PRODUCT_CODE := CTR-P-CFB2

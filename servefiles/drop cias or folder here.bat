@@ -1,5 +1,6 @@
 @ECHO OFF
-set /p DSIP="Enter the IP of your 3DS: "
+chcp 65001 >nul
+set /p DSIP="3DS IP: "
 for %%a in (%*) do (
 	if "%%~xa"==".cia" (
 		python "%~dp0servefiles.py" %DSIP% "%%~a"

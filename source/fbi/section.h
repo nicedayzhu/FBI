@@ -1,6 +1,7 @@
 #pragma once
 
 void mainmenu_open();
+void language_open();
 
 void dumpnand_open();
 void extsavedata_open();

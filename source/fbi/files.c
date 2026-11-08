@@ -1,3 +1,4 @@
+#include "../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,30 +11,30 @@
 #include "task/uitask.h"
 #include "../core/core.h"
 
-static list_item rename_opt = {"Rename", COLOR_TEXT, action_rename};
-static list_item copy = {"Copy", COLOR_TEXT, NULL};
-static list_item paste = {"Paste", COLOR_TEXT, action_paste_contents};
+static list_item rename_opt = LIST_ITEM_I18N(I18N_RENAME, COLOR_TEXT, action_rename);
+static list_item copy = LIST_ITEM_I18N(I18N_COPY, COLOR_TEXT, NULL);
+static list_item paste = LIST_ITEM_I18N(I18N_PASTE, COLOR_TEXT, action_paste_contents);
 
-static list_item delete_file = {"Delete", COLOR_TEXT, action_delete_file};
+static list_item delete_file = LIST_ITEM_I18N(I18N_DELETE, COLOR_TEXT, action_delete_file);
 
-static list_item install_cia = {"Install CIA", COLOR_TEXT, action_install_cia};
-static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT, action_install_cia_delete};
+static list_item install_cia = LIST_ITEM_I18N(I18N_INSTALL_CIA, COLOR_TEXT, action_install_cia);
+static list_item install_and_delete_cia = LIST_ITEM_I18N(I18N_INSTALL_AND_DELETE_CIA, COLOR_TEXT, action_install_cia_delete);
 
-static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_ticket};
-static list_item install_and_delete_ticket = {"Install and delete ticket", COLOR_TEXT, action_install_ticket_delete};
+static list_item install_ticket = LIST_ITEM_I18N(I18N_INSTALL_TICKET, COLOR_TEXT, action_install_ticket);
+static list_item install_and_delete_ticket = LIST_ITEM_I18N(I18N_INSTALL_AND_DELETE_TICKET, COLOR_TEXT, action_install_ticket_delete);
 
-static list_item delete_dir = {"Delete", COLOR_TEXT, action_delete_dir};
-static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, NULL};
-static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
-static list_item new_folder = {"New folder", COLOR_TEXT, action_new_folder};
+static list_item delete_dir = LIST_ITEM_I18N(I18N_DELETE, COLOR_TEXT, action_delete_dir);
+static list_item copy_all_contents = LIST_ITEM_I18N(I18N_COPY_ALL_CONTENTS, COLOR_TEXT, NULL);
+static list_item delete_all_contents = LIST_ITEM_I18N(I18N_DELETE_ALL_CONTENTS, COLOR_TEXT, action_delete_dir_contents);
+static list_item new_folder = LIST_ITEM_I18N(I18N_NEW_FOLDER, COLOR_TEXT, action_new_folder);
 
-static list_item install_all_cias = {"Install all CIAs", COLOR_TEXT, action_install_cias};
-static list_item install_and_delete_all_cias = {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete};
-static list_item delete_all_cias = {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias};
+static list_item install_all_cias = LIST_ITEM_I18N(I18N_INSTALL_ALL_CIAS, COLOR_TEXT, action_install_cias);
+static list_item install_and_delete_all_cias = LIST_ITEM_I18N(I18N_INSTALL_AND_DELETE_ALL_CIAS, COLOR_TEXT, action_install_cias_delete);
+static list_item delete_all_cias = LIST_ITEM_I18N(I18N_DELETE_ALL_CIAS, COLOR_TEXT, action_delete_dir_cias);
 
-static list_item install_all_tickets = {"Install all tickets", COLOR_TEXT, action_install_tickets};
-static list_item install_and_delete_all_tickets = {"Install and delete all tickets", COLOR_TEXT, action_install_tickets_delete};
-static list_item delete_all_tickets = {"Delete all tickets", COLOR_TEXT, action_delete_dir_tickets};
+static list_item install_all_tickets = LIST_ITEM_I18N(I18N_INSTALL_ALL_TICKETS, COLOR_TEXT, action_install_tickets);
+static list_item install_and_delete_all_tickets = LIST_ITEM_I18N(I18N_INSTALL_AND_DELETE_ALL_TICKETS, COLOR_TEXT, action_install_tickets_delete);
+static list_item delete_all_tickets = LIST_ITEM_I18N(I18N_DELETE_ALL_TICKETS, COLOR_TEXT, action_delete_dir_tickets);
 
 typedef struct {
     populate_files_data populateData;
@@ -107,9 +108,9 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 
             Result res = 0;
             if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archive, info->path, selected == &copy_all_contents))) {
-                prompt_display_notify("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : (info->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, info, task_draw_file_info, NULL);
+                prompt_display_notify(i18n_get(I18N_SUCCESS), selected == &copy_all_contents ? i18n_get(I18N_CURRENT_DIRECTORY_CONTENTS_COPIED_TO_CLIPBOARD) : (info->attributes & FS_ATTRIBUTE_DIRECTORY) ? i18n_get(I18N_CURRENT_DIRECTORY_COPIED_TO_CLIPBOARD) : i18n_get(I18N_FILE_COPIED_TO_CLIPBOARD), COLOR_TEXT, info, task_draw_file_info, NULL);
             } else {
-                error_display_res(info, task_draw_file_info, res, "Failed to copy to clipboard.");
+                error_display_res(info, task_draw_file_info, res, i18n_get(I18N_FAILED_TO_COPY_TO_CLIPBOARD));
             }
         } else if(selected == &install_all_cias || selected == &install_and_delete_all_cias || selected == &install_all_tickets || selected == &install_and_delete_all_tickets) {
             void (*filteredAction)(linked_list*, list_item*, bool (*)(void*, const char*, u32), void*) = action;
@@ -171,7 +172,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 static void files_action_open(linked_list* items, list_item* selected, files_data* parent) {
     files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate files action data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_FILES_ACTION_DATA));
 
         return;
     }
@@ -196,7 +197,7 @@ static void files_action_open(linked_list* items, list_item* selected, files_dat
         }
     }
 
-    list_display((((file_info*) selected->data)->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
+    list_display((((file_info*) selected->data)->attributes & FS_ATTRIBUTE_DIRECTORY) ? i18n_get(I18N_DIRECTORY_ACTION) : i18n_get(I18N_FILE_ACTION), i18n_get(I18N_A_SELECT_B_RETURN), data, files_action_update, files_action_draw_top);
 }
 
 static void files_options_add_entry(linked_list* items, const char* name, bool* val) {
@@ -238,16 +239,16 @@ static void files_options_update(ui_view* view, void* data, linked_list* items, 
     }
 
     if(linked_list_size(items) == 0) {
-        files_options_add_entry(items, "Show hidden", &listData->showHidden);
-        files_options_add_entry(items, "Show directories", &listData->showDirectories);
-        files_options_add_entry(items, "Show files", &listData->showFiles);
-        files_options_add_entry(items, "Show CIAs", &listData->showCias);
-        files_options_add_entry(items, "Show tickets", &listData->showTickets);
+        files_options_add_entry(items, i18n_get(I18N_SHOW_HIDDEN), &listData->showHidden);
+        files_options_add_entry(items, i18n_get(I18N_SHOW_DIRECTORIES), &listData->showDirectories);
+        files_options_add_entry(items, i18n_get(I18N_SHOW_FILES), &listData->showFiles);
+        files_options_add_entry(items, i18n_get(I18N_SHOW_CIAS), &listData->showCias);
+        files_options_add_entry(items, i18n_get(I18N_SHOW_TICKETS), &listData->showTickets);
     }
 }
 
 static void files_options_open(files_data* data) {
-    list_display("Options", "A: Toggle, B: Return", data, files_options_update, NULL);
+    list_display(i18n_get(I18N_OPTIONS), i18n_get(I18N_A_TOGGLE_B_RETURN), data, files_options_update, NULL);
 }
 
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -270,7 +271,7 @@ static void files_repopulate(files_data* listData, linked_list* items) {
 
     Result res = task_populate_files(&listData->populateData);
     if(R_FAILED(res)) {
-        error_display_res(NULL, NULL, res, "Failed to initiate file list population.");
+        error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_INITIATE_FILE_LIST_POPULATION));
     }
 
     listData->populated = true;
@@ -347,7 +348,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         file_info* fileInfo = (file_info*) selected->data;
 
-        if((fileInfo->attributes & FS_ATTRIBUTE_DIRECTORY) && strncmp(selected->name, "<current directory>", LIST_ITEM_NAME_MAX) != 0) {
+        if((fileInfo->attributes & FS_ATTRIBUTE_DIRECTORY) && strncmp(selected->name, i18n_get(I18N_CURRENT_DIRECTORY), LIST_ITEM_NAME_MAX) != 0) {
             files_navigate(listData, items, fileInfo->path);
         } else {
             files_action_open(items, selected, listData);
@@ -360,7 +361,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate file list.");
+        error_display_res(NULL, NULL, listData->populateData.result, i18n_get(I18N_FAILED_TO_POPULATE_FILE_LIST));
 
         listData->populateData.result = 0;
     }
@@ -369,7 +370,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
 void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate files data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_FILES_DATA));
 
         return;
     }
@@ -397,7 +398,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     if(archivePath.data != NULL) {
         data->archivePath.data = calloc(1, data->archivePath.size);
         if(data->archivePath.data == NULL) {
-            error_display(NULL, NULL, "Failed to allocate files data.");
+            error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_FILES_DATA));
 
             files_free_data(data);
             return;
@@ -412,13 +413,13 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
 
     Result res = 0;
     if(R_FAILED(res = fs_open_archive(&data->archive, archiveId, archivePath))) {
-        error_display_res(NULL, NULL, res, "Failed to open file listing archive.");
+        error_display_res(NULL, NULL, res, i18n_get(I18N_FAILED_TO_OPEN_FILE_LISTING_ARCHIVE));
 
         files_free_data(data);
         return;
     }
 
-    list_display("Files", "A: Select, B: Back, X: Refresh, Select: Options", data, files_update, files_draw_top);
+    list_display(i18n_get(I18N_FILES), i18n_get(I18N_A_SELECT_B_BACK_X_REFRESH_SELECT_OPTIONS), data, files_update, files_draw_top);
 }
 
 static void files_open_nand_warning_onresponse(ui_view* view, void* data, u32 response) {
@@ -430,7 +431,7 @@ static void files_open_nand_warning_onresponse(ui_view* view, void* data, u32 re
 }
 
 void files_open_nand_warning(FS_ArchiveID archive) {
-    prompt_display_yes_no("Confirmation", "Modifying the NAND is dangerous and can render\n the system inoperable.\nMake sure you know what you are doing.\n\nProceed?", COLOR_TEXT, (void*) archive, NULL, files_open_nand_warning_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_MODIFYING_THE_NAND_IS_DANGEROUS_AND_CAN_RENDER_THE_SYSTEM), COLOR_TEXT, (void*) archive, NULL, files_open_nand_warning_onresponse);
 }
 
 void files_open_sd() {

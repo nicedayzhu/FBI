@@ -1,12 +1,16 @@
 #include <errno.h>
 #include <malloc.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <3ds.h>
 #include <citro3d.h>
 
 #include "error.h"
+#include "i18n.h"
 #include "screen.h"
 #include "../libs/stb_image/stb_image.h"
 
@@ -29,6 +33,8 @@ static float font_scale;
 
 static u8 base_alpha = 0xFF;
 
+static CFNT_s* custom_font;
+
 static u32 color_config[MAX_COLORS] = {0xFF000000};
 
 static struct {
@@ -37,6 +43,76 @@ static struct {
     u32 width;
     u32 height;
 } textures[MAX_TEXTURES];
+
+static bool screen_font_pointer_in_range(const void* pointer, size_t size, const void* base, size_t totalSize) {
+    uintptr_t start = (uintptr_t) base;
+    uintptr_t value = (uintptr_t) pointer;
+
+    return value >= start && size <= totalSize && value - start <= totalSize - size;
+}
+
+static bool screen_load_custom_font(const char* path) {
+    FILE* file = fopen(path, "rb");
+    if(file == NULL) {
+        return false;
+    }
+
+    bool loaded = false;
+    CFNT_s header;
+    long fileSize = -1;
+
+    if(fseek(file, 0, SEEK_END) == 0) {
+        fileSize = ftell(file);
+    }
+
+    if(fileSize >= (long) sizeof(CFNT_s) && fileSize <= 16 * 1024 * 1024 && fseek(file, 0, SEEK_SET) == 0
+       && fread(&header, 1, sizeof(header), file) == sizeof(header)
+       && memcmp(&header.signature, "CFNT", 4) == 0
+       && header.endianness == 0xFEFF
+       && header.headerSize == offsetof(CFNT_s, finf)
+       && header.fileSize == (u32) fileSize
+       && header.nBlocks >= 2
+       && memcmp(&header.finf.signature, "FINF", 4) == 0
+       && (uintptr_t) header.finf.tglp >= sizeof(CFNT_s)
+       && (uintptr_t) header.finf.tglp <= header.fileSize - sizeof(TGLP_s)
+       && (uintptr_t) header.finf.cwdh >= sizeof(CFNT_s)
+       && (uintptr_t) header.finf.cwdh <= header.fileSize - sizeof(CWDH_s)
+       && (uintptr_t) header.finf.cmap >= sizeof(CFNT_s)
+       && (uintptr_t) header.finf.cmap <= header.fileSize - sizeof(CMAP_s)) {
+        custom_font = (CFNT_s*) linearAlloc(header.fileSize);
+        if(custom_font != NULL) {
+            memcpy(custom_font, &header, sizeof(header));
+
+            size_t remaining = header.fileSize - sizeof(header);
+            if(fread((u8*) custom_font + sizeof(header), 1, remaining, file) == remaining) {
+                fontFixPointers(custom_font);
+
+                TGLP_s* glyphInfo = fontGetGlyphInfo(custom_font);
+                if(glyphInfo != NULL
+                   && screen_font_pointer_in_range(glyphInfo, sizeof(TGLP_s), custom_font, header.fileSize)
+                   && glyphInfo->nSheets > 0
+                   && glyphInfo->sheetSize > 0
+                   && glyphInfo->sheetSize <= SIZE_MAX / glyphInfo->nSheets
+                   && glyphInfo->cellHeight > 0
+                   && glyphInfo->sheetWidth > 0
+                   && glyphInfo->sheetHeight > 0
+                   && screen_font_pointer_in_range(glyphInfo->sheetData, (size_t) glyphInfo->sheetSize * glyphInfo->nSheets, custom_font, header.fileSize)
+                   && screen_font_pointer_in_range(custom_font->finf.cwdh, sizeof(CWDH_s), custom_font, header.fileSize)
+                   && screen_font_pointer_in_range(custom_font->finf.cmap, sizeof(CMAP_s), custom_font, header.fileSize)) {
+                    loaded = true;
+                }
+            }
+
+            if(!loaded) {
+                linearFree(custom_font);
+                custom_font = NULL;
+            }
+        }
+    }
+
+    fclose(file);
+    return loaded;
+}
 
 static void screen_set_blend(u32 color, bool rgb, bool alpha) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
@@ -67,6 +143,11 @@ static void screen_set_blend(u32 color, bool rgb, bool alpha) {
 }
 
 void screen_init() {
+    if(!screen_load_custom_font("romfs:/zh_cn.bcfnt")) {
+        error_panic("Chinese font asset is missing or invalid.");
+        return;
+    }
+
     if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4)) {
         error_panic("Failed to initialize the GPU.");
         return;
@@ -111,7 +192,7 @@ void screen_init() {
 
     Result progSetVshRes = shaderProgramSetVsh(&program, &dvlb->DVLE[0]);
     if(R_FAILED(progSetVshRes)) {
-        error_panic("Failed to set up vertex shader: 0x%08lX", progInitRes);
+        error_panic("Failed to set up vertex shader: 0x%08lX", progSetVshRes);
         return;
     }
 
@@ -131,13 +212,7 @@ void screen_init() {
 
     screen_set_blend(0, false, false);
 
-    Result fontMapRes = fontEnsureMapped();
-    if(R_FAILED(fontMapRes)) {
-        error_panic("Failed to map system font: 0x%08lX", fontMapRes);
-        return;
-    }
-
-    TGLP_s* glyphInfo = fontGetGlyphInfo(NULL);
+    TGLP_s* glyphInfo = fontGetGlyphInfo(custom_font);
 
     glyph_count = glyphInfo->nSheets;
     glyph_sheets = calloc(glyph_count, sizeof(C3D_Tex));
@@ -148,7 +223,7 @@ void screen_init() {
 
     for(int i = 0; i < glyph_count; i++) {
         C3D_Tex* tex = &glyph_sheets[i];
-        tex->data = fontGetGlyphSheetTex(NULL, i);
+        tex->data = fontGetGlyphSheetTex(custom_font, i);
         tex->fmt = (GPU_TEXCOLOR) glyphInfo->sheetFmt;
         tex->size = glyphInfo->sheetSize;
         tex->width = glyphInfo->sheetWidth;
@@ -168,6 +243,8 @@ void screen_exit() {
         free(glyph_sheets);
         glyph_sheets = NULL;
     }
+
+    glyph_count = 0;
 
     if(shader_initialized) {
         shaderProgramFree(&program);
@@ -192,6 +269,11 @@ void screen_exit() {
     if(c3d_initialized) {
         C3D_Fini();
         c3d_initialized = false;
+    }
+
+    if(custom_font != NULL) {
+        linearFree(custom_font);
+        custom_font = NULL;
     }
 }
 
@@ -491,7 +573,7 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
 }
 
 float screen_get_font_height(float scaleY) {
-    return scaleY * fontGetInfo(NULL)->lineFeed;
+    return scaleY * fontGetInfo(custom_font)->lineFeed;
 }
 
 #define MAX_LINES 64
@@ -529,6 +611,8 @@ inline static void screen_wrap_string_finish_line(float* w, float* h, float* lw,
 
 static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights, u32* numLines, float* totalWidth, float* totalHeight,
                                const char* text, u32 maxLines, float maxWidth, float scaleX, float scaleY, bool wordWrap) {
+    text = i18n_resolve(text);
+
     scaleX *= font_scale;
     scaleY *= font_scale;
 
@@ -558,12 +642,12 @@ static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights
             lastAlignPos = linePos;
         }
 
-        charWidth *= scaleX * fontGetCharWidthInfo(NULL, fontGlyphIndexFromCodePoint(NULL, code))->charWidth;
+        charWidth *= scaleX * fontGetCharWidthInfo(custom_font, fontGlyphIndexFromCodePoint(custom_font, code))->charWidth;
 
         if(code == '\n' || (wordWrap && lw + charWidth >= maxWidth)) {
             if(code == '\n') {
                 linePos++;
-                lh = scaleY * fontGetInfo(NULL)->lineFeed;
+                lh = scaleY * fontGetInfo(custom_font)->lineFeed;
             }
 
             u32 oldLinePos = linePos;
@@ -600,7 +684,7 @@ static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights
             }
 
             lw += charWidth;
-            lh = scaleY * fontGetInfo(NULL)->lineFeed;
+            lh = scaleY * fontGetInfo(custom_font)->lineFeed;
 
             linePos++;
         }
@@ -637,6 +721,8 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
     if(text == NULL) {
         return;
     }
+
+    text = i18n_resolve(text);
 
     if(colorId >= MAX_COLORS) {
         error_panic("Attempted to draw string with invalid color ID \"%lu\".", colorId);
@@ -692,10 +778,9 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
                 }
 
                 fontGlyphPos_s data;
-                fontCalcGlyphPos(&data, NULL, fontGlyphIndexFromCodePoint(NULL, code), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
-
+                fontCalcGlyphPos(&data, custom_font, fontGlyphIndexFromCodePoint(custom_font, code), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
                 if(data.sheetIndex >= glyph_count) {
-                    fontCalcGlyphPos(&data, NULL, fontGlyphIndexFromCodePoint(NULL, 0xFFFD), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
+                    fontCalcGlyphPos(&data, custom_font, fontGlyphIndexFromCodePoint(custom_font, 0xFFFD), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
                 }
 
                 if(data.sheetIndex < glyph_count && data.sheetIndex != lastSheet) {

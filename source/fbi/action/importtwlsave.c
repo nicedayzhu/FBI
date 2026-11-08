@@ -1,3 +1,4 @@
+#include "../../core/i18n.h"
 #include <malloc.h>
 #include <stdio.h>
 
@@ -83,7 +84,7 @@ static Result action_import_twl_save_restore(void* data, u32 index) {
 }
 
 static bool action_import_twl_save_error(void* data, u32 index, Result res, ui_view** errorView) {
-    *errorView = error_display_res(((import_twl_save_data*) data)->title, task_draw_title_info, res, "Failed to import save.");
+    *errorView = error_display_res(((import_twl_save_data*) data)->title, task_draw_title_info, res, i18n_get(I18N_FAILED_TO_IMPORT_SAVE));
     return true;
 }
 
@@ -95,7 +96,7 @@ static void action_import_twl_save_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(importData->importInfo.result)) {
-            prompt_display_notify("Success", "Save imported.", COLOR_TEXT, importData->title, task_draw_title_info, NULL);
+            prompt_display_notify(i18n_get(I18N_SUCCESS), i18n_get(I18N_SAVE_IMPORTED), COLOR_TEXT, importData->title, task_draw_title_info, NULL);
         }
 
         free(data);
@@ -108,7 +109,7 @@ static void action_import_twl_save_update(ui_view* view, void* data, float* prog
     }
 
     *progress = importData->importInfo.currTotal != 0 ? (float) ((double) importData->importInfo.currProcessed / (double) importData->importInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s",
+    snprintf(text, PROGRESS_TEXT_MAX, i18n_get(I18N_N_2F_S_2F_S_2F_S_S_ETA_S),
              ui_get_display_size(importData->importInfo.currProcessed),
              ui_get_display_size_units(importData->importInfo.currProcessed),
              ui_get_display_size(importData->importInfo.currTotal),
@@ -124,9 +125,9 @@ static void action_import_twl_save_onresponse(ui_view* view, void* data, u32 res
 
         Result res = task_data_op(&importData->importInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Importing Save", "Press B to cancel.", true, data, action_import_twl_save_update, action_import_twl_save_draw_top);
+            info_display(i18n_get(I18N_IMPORTING_SAVE), i18n_get(I18N_PRESS_B_TO_CANCEL), true, data, action_import_twl_save_update, action_import_twl_save_draw_top);
         } else {
-            error_display_res(importData->title, task_draw_title_info, res, "Failed to initiate save import.");
+            error_display_res(importData->title, task_draw_title_info, res, i18n_get(I18N_FAILED_TO_INITIATE_SAVE_IMPORT));
             free(data);
         }
     } else {
@@ -137,7 +138,7 @@ static void action_import_twl_save_onresponse(ui_view* view, void* data, u32 res
 void action_import_twl_save(linked_list* items, list_item* selected) {
     import_twl_save_data* data = (import_twl_save_data*) calloc(1, sizeof(import_twl_save_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate import TWL save data.");
+        error_display(NULL, NULL, i18n_get(I18N_FAILED_TO_ALLOCATE_IMPORT_TWL_SAVE_DATA));
 
         return;
     }
@@ -172,5 +173,5 @@ void action_import_twl_save(linked_list* items, list_item* selected) {
 
     data->importInfo.finished = true;
 
-    prompt_display_yes_no("Confirmation", "Import the save of the selected title?", COLOR_TEXT, data, action_import_twl_save_draw_top, action_import_twl_save_onresponse);
+    prompt_display_yes_no(i18n_get(I18N_CONFIRMATION), i18n_get(I18N_IMPORT_THE_SAVE_OF_THE_SELECTED_TITLE), COLOR_TEXT, data, action_import_twl_save_draw_top, action_import_twl_save_onresponse);
 }
