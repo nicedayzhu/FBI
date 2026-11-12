@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.7.6
+
+- Added title-root CBPATCH1 records so `code.ips` is installed alongside
+  `romfs` instead of being silently omitted.
+- Added negotiated per-record zlib streaming to reduce network payload without
+  staging a ZIP on the SD card.
+- Fixed the integrated Remote Install discovery response to advertise the
+  `title-root,zlib` features, and added the receiver version for diagnostics.
+- Added a version-specific build stamp so version-only changes recompile every
+  object and cannot leave UI and discovery version constants out of sync.
+
 ## 2.7.5
 
 - Replaced the Chinese-only build with one universal English and Simplified

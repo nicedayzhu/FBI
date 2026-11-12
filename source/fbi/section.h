@@ -14,6 +14,7 @@ void files_open_twl_sound();
 void pendingtitles_open();
 void remoteinstall_open();
 void patchinstall_open();
+const char* patchinstall_discovery_response();
 void* patchinstall_listener_open();
 bool patchinstall_listener_poll(void* listener);
 void patchinstall_listener_prompt(void* listener);

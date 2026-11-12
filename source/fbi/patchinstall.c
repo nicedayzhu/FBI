@@ -18,11 +18,18 @@
 #define PATCH_CONTROL_PORT 5002
 #define PATCH_DISCOVERY_PORT 5001
 #define PATCH_DISCOVERY_REQUEST "CIA_BRIDGE_DISCOVER_V1"
-#define PATCH_DISCOVERY_RESPONSE "CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw"
+#define PATCH_STRINGIFY_INNER(value) #value
+#define PATCH_STRINGIFY(value) PATCH_STRINGIFY_INNER(value)
+#define PATCH_VERSION_TEXT PATCH_STRINGIFY(VERSION_MAJOR) "." PATCH_STRINGIFY(VERSION_MINOR) "." PATCH_STRINGIFY(VERSION_MICRO)
+#define PATCH_DISCOVERY_RESPONSE "CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw;features=title-root,zlib;version=" PATCH_VERSION_TEXT
 #define PATCH_MAGIC "CBPATCH1"
 #define PATCH_HEADER_SIZE 72
 #define PATCH_RECORD_SIZE 24
 #define PATCH_MAX_PATH 1024
+#define PATCH_FLAG_TITLE_ROOT_PATHS 1
+#define PATCH_KNOWN_FLAGS PATCH_FLAG_TITLE_ROOT_PATHS
+#define PATCH_CODEC_RAW 0
+#define PATCH_CODEC_ZLIB 1
 #define PATCH_CACHE_MAGIC "CBCACHE1"
 #define PATCH_CACHE_SIZE 40
 #define PATCH_HTTP_BUFFER_SIZE (512 * 1024)
@@ -99,8 +106,10 @@ typedef struct {
     u64 totalStored;
     u8 bundleId[16];
     u32 headerCrc;
+    u32 headerFlags;
     bool cacheAllowed;
-    bool targetRomfsExisted;
+    bool titleRootPaths;
+    bool targetDataExisted;
     u32 filesDone;
     u32 filesSkipped;
     u64 rawDone;
@@ -110,12 +119,16 @@ typedef struct {
     u16 pathLength;
     u64 fileRawSize;
     u64 fileStoredSize;
+    u8 fileCodec;
     u32 fileCrcExpected;
     u64 fileStoredRead;
     u64 fileRawWritten;
     u64 fileExistingSize;
     u32 fileCrc;
     bool fileSkipped;
+    z_stream inflater;
+    bool inflaterActive;
+    bool inflaterFinished;
     char relativePath[PATCH_MAX_PATH + 1];
     char previousPath[PATCH_MAX_PATH + 1];
     char targetRoot[FILE_PATH_MAX];
@@ -142,6 +155,10 @@ typedef struct {
 } patchinstall_data;
 
 static Result patch_http_check_running(void* userData);
+
+const char* patchinstall_discovery_response() {
+    return PATCH_DISCOVERY_RESPONSE;
+}
 
 static u16 patch_read_u16(const u8* data) {
     return (u16) data[0] | ((u16) data[1] << 8);
@@ -392,7 +409,7 @@ static Result patch_write_file(patchinstall_data* data, const u8* buffer, size_t
         // consume file timestamps, so avoid that redundant update too.
         written = 0;
         const u8* writeSource = buffer;
-        if(data->writeBuffer != NULL) {
+        if(data->writeBuffer != NULL && buffer != data->writeBuffer) {
             // Record headers and paths make the payload cursor inside a queue
             // slot unaligned even though the slot itself is page-aligned.
             // Stage it at a page boundary before the FS IPC mapping.
@@ -435,10 +452,15 @@ static Result patch_close_current_file(patchinstall_data* data, bool verify) {
     if(verify && R_SUCCEEDED(res)) {
         if(data->fileStoredRead != data->fileStoredSize
            || data->fileRawWritten != data->fileRawSize
-           || data->fileCrc != data->fileCrcExpected) {
+           || data->fileCrc != data->fileCrcExpected
+           || (data->fileCodec == PATCH_CODEC_ZLIB && !data->inflaterFinished)) {
             patch_set_error(data, i18n_get(I18N_A_TARGET_PATCH_FILE_FAILED_VERIFICATION));
             res = R_APP_BAD_DATA;
         }
+    }
+    if(data->inflaterActive) {
+        inflateEnd(&data->inflater);
+        data->inflaterActive = false;
     }
     return res;
 }
@@ -447,7 +469,8 @@ static Result patch_prepare_target(patchinstall_data* data) {
     snprintf(data->targetRoot, sizeof(data->targetRoot), "/luma/titles/%016llX", data->titleId);
     snprintf(data->targetRomfs, sizeof(data->targetRomfs), "%s/romfs", data->targetRoot);
     snprintf(data->cachePath, sizeof(data->cachePath), "%s/.cia-bridge-cache", data->targetRoot);
-    data->targetRomfsExisted = patch_directory_exists(data->archive, data->targetRomfs);
+    data->targetDataExisted = patch_directory_exists(
+        data->archive, data->titleRootPaths ? data->targetRoot : data->targetRomfs);
 
     const char* directories[] = {
         "/luma",
@@ -467,9 +490,10 @@ static Result patch_prepare_target(patchinstall_data* data) {
 
 static Result patch_parse_header(patchinstall_data* data) {
     const u8* header = data->pending;
+    u32 flags = patch_read_u32(header + 12);
     if(memcmp(header, PATCH_MAGIC, 8) != 0
        || patch_read_u32(header + 8) != PATCH_HEADER_SIZE
-       || patch_read_u32(header + 12) != 0
+       || (flags & ~PATCH_KNOWN_FLAGS) != 0
        || patch_read_u32(header + 28) != 0
        || patch_read_u32(header + 68) != 0
        || patch_read_u32(header + 64) != crc32(0, header, 64)) {
@@ -483,6 +507,8 @@ static Result patch_parse_header(patchinstall_data* data) {
     data->totalStored = patch_read_u64(header + 40);
     memcpy(data->bundleId, header + 48, sizeof(data->bundleId));
     data->headerCrc = patch_read_u32(header + 64);
+    data->headerFlags = flags;
+    data->titleRootPaths = (flags & PATCH_FLAG_TITLE_ROOT_PATHS) != 0;
     data->cacheAllowed = false;
     for(u32 i = 0; i < sizeof(data->bundleId); i++) {
         if(data->bundleId[i] != 0) {
@@ -490,8 +516,7 @@ static Result patch_parse_header(patchinstall_data* data) {
             break;
         }
     }
-    if(data->titleId == 0 || data->fileCount == 0 || data->fileCount > 100000
-       || data->totalStored != data->totalRaw) {
+    if(data->titleId == 0 || data->fileCount == 0 || data->fileCount > 100000) {
         patch_set_error(data, i18n_get(I18N_INVALID_TITLE_ID_OR_FILE_COUNT));
         return R_APP_BAD_DATA;
     }
@@ -499,7 +524,7 @@ static Result patch_parse_header(patchinstall_data* data) {
     Result res = patch_prepare_target(data);
     if(R_SUCCEEDED(res)) {
         bool cacheMatches = false;
-        if(!data->forceVerify && data->cacheAllowed && data->targetRomfsExisted) {
+        if(!data->forceVerify && data->cacheAllowed && data->targetDataExisted) {
             res = patch_read_cache(data, &cacheMatches);
         }
         if(R_SUCCEEDED(res) && cacheMatches) {
@@ -542,12 +567,16 @@ static Result patch_parse_header(patchinstall_data* data) {
 
 static Result patch_parse_record(patchinstall_data* data) {
     data->pathLength = patch_read_u16(data->pending);
+    data->fileCodec = data->pending[2];
     data->fileRawSize = patch_read_u64(data->pending + 4);
     data->fileStoredSize = patch_read_u64(data->pending + 12);
     data->fileCrcExpected = patch_read_u32(data->pending + 20);
     if(data->pathLength == 0 || data->pathLength > PATCH_MAX_PATH
-       || data->pending[2] != 0 || data->pending[3] != 0
-       || data->fileStoredSize != data->fileRawSize) {
+       || (data->fileCodec != PATCH_CODEC_RAW && data->fileCodec != PATCH_CODEC_ZLIB)
+       || data->pending[3] != 0
+       || (data->fileCodec == PATCH_CODEC_RAW && data->fileStoredSize != data->fileRawSize)
+       || (data->fileCodec == PATCH_CODEC_ZLIB
+           && (data->fileRawSize == 0 || data->fileStoredSize == 0))) {
         patch_set_error(data, i18n_get(I18N_INVALID_FILE_RECORD));
         return R_APP_BAD_DATA;
     }
@@ -597,12 +626,17 @@ static Result patch_open_record_file(patchinstall_data* data) {
         patch_set_error(data, i18n_get(I18N_UNSAFE_PATH_IN_PATCH_BUNDLE));
         return R_APP_BAD_DATA;
     }
+    if(data->titleRootPaths && strcasecmp(data->relativePath, ".cia-bridge-cache") == 0) {
+        patch_set_error(data, i18n_get(I18N_UNSAFE_PATH_IN_PATCH_BUNDLE));
+        return R_APP_BAD_DATA;
+    }
     if(data->previousPath[0] != '\0' && strcasecmp(data->previousPath, data->relativePath) >= 0) {
         patch_set_error(data, i18n_get(I18N_PATCH_PATHS_ARE_DUPLICATED_OR_NOT_SORTED));
         return R_APP_BAD_DATA;
     }
+    const char* targetBase = data->titleRootPaths ? data->targetRoot : data->targetRomfs;
     char target[FILE_PATH_MAX] = {'\0'};
-    int targetLength = snprintf(target, sizeof(target), "%s/%s", data->targetRomfs, data->relativePath);
+    int targetLength = snprintf(target, sizeof(target), "%s/%s", targetBase, data->relativePath);
     if(targetLength < 0 || targetLength >= (int) sizeof(target)) {
         patch_set_error(data, i18n_get(I18N_PATCH_PATH_EXCEEDS_THE_3DS_FILESYSTEM_LIMIT));
         return R_APP_OUT_OF_RANGE;
@@ -610,7 +644,7 @@ static Result patch_open_record_file(patchinstall_data* data) {
 
     u64 setupStart = osGetTime();
     Result res = patch_ensure_parents(data->archive, target,
-                                      target + strlen(data->targetRomfs) + 1,
+                                      target + strlen(targetBase) + 1,
                                       data->previousPath);
     if(R_FAILED(res)) {
         data->fileSetupMs += osGetTime() - setupStart;
@@ -670,6 +704,17 @@ static Result patch_open_record_file(patchinstall_data* data) {
     data->fileStoredRead = 0;
     data->fileRawWritten = 0;
     data->fileCrc = crc32(0, Z_NULL, 0);
+    data->inflaterFinished = false;
+    memset(&data->inflater, 0, sizeof(data->inflater));
+    if(data->fileCodec == PATCH_CODEC_ZLIB) {
+        int zres = inflateInit(&data->inflater);
+        if(zres != Z_OK) {
+            patch_close_current_file(data, false);
+            patch_set_error(data, i18n_get(I18N_INVALID_FILE_RECORD));
+            return zres == Z_MEM_ERROR ? R_APP_OUT_OF_MEMORY : R_APP_BAD_DATA;
+        }
+        data->inflaterActive = true;
+    }
     data->state = PATCH_PARSE_DATA;
     data->pendingHave = 0;
     data->pendingNeed = 0;
@@ -679,7 +724,8 @@ static Result patch_open_record_file(patchinstall_data* data) {
 static Result patch_finish_record(patchinstall_data* data) {
     if(data->fileStoredRead != data->fileStoredSize
        || data->fileRawWritten != data->fileRawSize
-       || data->fileCrc != data->fileCrcExpected) {
+       || data->fileCrc != data->fileCrcExpected
+       || (data->fileCodec == PATCH_CODEC_ZLIB && !data->inflaterFinished)) {
         patch_close_current_file(data, false);
         patch_set_error(data, i18n_get(I18N_FILE_SIZE_OR_CRC32_VERIFICATION_FAILED));
         return R_APP_BAD_DATA;
@@ -738,11 +784,60 @@ static Result patch_finish_record(patchinstall_data* data) {
 }
 
 static Result patch_consume_file_data(patchinstall_data* data, const u8* input, size_t size) {
-    Result res = patch_write_file(data, input, size);
-    if(R_SUCCEEDED(res)) {
-        data->fileStoredRead += size;
+    if(data->fileCodec == PATCH_CODEC_RAW) {
+        Result res = patch_write_file(data, input, size);
+        if(R_SUCCEEDED(res)) {
+            data->fileStoredRead += size;
+        }
+        return res;
     }
-    return res;
+
+    if(!data->inflaterActive || data->inflaterFinished || size > UINT_MAX) {
+        patch_set_error(data, i18n_get(I18N_INVALID_FILE_RECORD));
+        return R_APP_BAD_DATA;
+    }
+
+    data->inflater.next_in = (Bytef*) input;
+    data->inflater.avail_in = (uInt) size;
+    bool outputWasFull = false;
+    do {
+        data->inflater.next_out = data->compareBuffer;
+        data->inflater.avail_out = PATCH_COMPARE_BUFFER_SIZE;
+        uInt inputBefore = data->inflater.avail_in;
+        int zres = inflate(&data->inflater, Z_NO_FLUSH);
+        size_t produced = PATCH_COMPARE_BUFFER_SIZE - data->inflater.avail_out;
+        if(produced > 0) {
+            Result res = patch_write_file(data, data->compareBuffer, produced);
+            if(R_FAILED(res)) {
+                return res;
+            }
+        }
+        if(zres == Z_STREAM_END) {
+            data->inflaterFinished = true;
+            if(data->inflater.avail_in != 0) {
+                patch_set_error(data, i18n_get(I18N_INVALID_FILE_RECORD));
+                return R_APP_BAD_DATA;
+            }
+            break;
+        }
+        // A full output buffer can consume the last byte currently available
+        // while the stream still needs the next network chunk. A drain call
+        // with no input then legitimately returns Z_BUF_ERROR; wait for that
+        // next chunk and let the record-end checks reject a truly truncated
+        // stream.
+        if(zres == Z_BUF_ERROR && inputBefore == 0 && produced == 0) {
+            break;
+        }
+        if(zres != Z_OK
+           || (produced == 0 && data->inflater.avail_in == inputBefore)) {
+            patch_set_error(data, i18n_get(I18N_INVALID_FILE_RECORD));
+            return zres == Z_MEM_ERROR ? R_APP_OUT_OF_MEMORY : R_APP_BAD_DATA;
+        }
+        outputWasFull = data->inflater.avail_out == 0;
+    } while(data->inflater.avail_in > 0 || outputWasFull);
+
+    data->fileStoredRead += size;
+    return 0;
 }
 
 static Result patch_http_callback(void* userData, void* buffer, size_t size) {

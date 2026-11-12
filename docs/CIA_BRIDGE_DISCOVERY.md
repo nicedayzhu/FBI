@@ -39,11 +39,13 @@ version token instead of changing `V1` in place.
 The existing **Receive URLs over the network** screen listens for the same
 discovery request on UDP 5001 and replies:
 
-`CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw`
+`CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw;features=title-root,zlib;version=2.7.6`
 
 `cia` preserves the original Remote Install control port, `patch` advertises
-the independent CBPATCH1 control port, and `codecs=raw` declares that the
-streaming receiver accepts only uncompressed record payloads. The screen
+the independent CBPATCH1 control port, and the required `codecs=raw` field
+keeps older senders compatible. Optional `features` declare support for paths
+relative to the Luma title root and for per-record zlib payloads. `version`
+identifies the running receiver for UI display and troubleshooting. The screen
 selects the protocol by the TCP port that CIA Bridge connects to; users do not
 choose a second FBI menu item. If TCP 5002 cannot be opened, discovery falls
 back to the Version 1 response and TCP 5000 remains available.

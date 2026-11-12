@@ -19,7 +19,6 @@
 #define CIA_BRIDGE_DISCOVERY_PORT 5001
 #define CIA_BRIDGE_DISCOVERY_REQUEST "CIA_BRIDGE_DISCOVER_V1"
 #define CIA_BRIDGE_DISCOVERY_RESPONSE_V1 "CIA_BRIDGE_FBI_V1;tcp=5000"
-#define CIA_BRIDGE_DISCOVERY_RESPONSE_V2 "CIA_BRIDGE_FBI_V2;cia=5000;patch=5002;codecs=raw"
 #define CIA_BRIDGE_DISCOVERY_MAX_PACKETS 8
 
 static bool remoteinstall_get_last_urls(char* out, size_t size) {
@@ -164,7 +163,7 @@ static void remoteinstall_network_update_discovery(remoteinstall_network_data* d
         if(received == (int) strlen(CIA_BRIDGE_DISCOVERY_REQUEST)
            && memcmp(request, CIA_BRIDGE_DISCOVERY_REQUEST, strlen(CIA_BRIDGE_DISCOVERY_REQUEST)) == 0) {
             const char* response = data->patchListener != NULL
-                                   ? CIA_BRIDGE_DISCOVERY_RESPONSE_V2
+                                   ? patchinstall_discovery_response()
                                    : CIA_BRIDGE_DISCOVERY_RESPONSE_V1;
             sendto(data->discoverySocket, response, strlen(response), 0,
                    (struct sockaddr*) &client, clientLen);

@@ -22,7 +22,7 @@ BUILD_FLAGS := -Wno-format-truncation
 
 VERSION_MAJOR := 2
 VERSION_MINOR := 7
-VERSION_MICRO := 5
+VERSION_MICRO := 6
 
 DESCRIPTION := CIA Bridge discovery and fast pipelined installation.
 AUTHOR := Steveice10
@@ -40,3 +40,15 @@ LOGO := meta/logo_3ds.bcma.lz
 # INTERNAL #
 
 include buildtools/make_base
+
+# Compiler version macros affect UI text, discovery replies, and the HTTP user
+# agent, but a Makefile-only version bump is not visible to generated .d files.
+# A version-specific stamp makes every object rebuild once when any component
+# changes, preventing a new CIA from retaining stale version constants.
+VERSION_STAMP := $(BUILD_DIR)/.version-$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_MICRO)
+
+$(VERSION_STAMP):
+	@mkdir -p $(@D)
+	@touch $@
+
+$(OBJECT_FILES): $(VERSION_STAMP)
